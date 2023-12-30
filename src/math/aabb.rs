@@ -5,20 +5,20 @@ use nalgebra_glm as glm;
 
 /// An AABB bounding volume
 #[derive(Debug, Clone)]
-pub struct AABB {
+pub struct Aabb {
     /// the corner with the lower coordinates
     pub min: glm::Vec3,
     /// the corner with the upper coordinates
     pub max: glm::Vec3,
 }
 
-impl AABB {
+impl Aabb {
     /// Creates a new empty bounding volume
     pub fn new() -> Self {
         let min = glm::vec3(f32::MAX, f32::MAX, f32::MAX);
         let max = glm::vec3(f32::MIN, f32::MIN, f32::MIN);
 
-        AABB { min, max }
+        Self { min, max }
     }
 
     /// Creates a new cubic bounding volume with the specified center and size.
@@ -29,7 +29,7 @@ impl AABB {
     pub fn new_cube(center: &glm::Vec3, size: f32) -> Self {
         let half_size = size / 2f32;
 
-        let mut result = AABB::new();
+        let mut result = Aabb::new();
         result.min = *center - glm::vec3(half_size, half_size, half_size);
         result.max = *center + glm::vec3(half_size, half_size, half_size);
 
@@ -79,15 +79,13 @@ impl AABB {
     /// Computes and returns the bounding box center
     #[inline]
     pub fn get_center(&self) -> glm::Vec3 {
-        let center = (self.min + self.max) / 2.0;
-        center
+        (self.min + self.max) / 2.0
     }
 
     /// Computes and returns the bounding box size
     #[inline]
     pub fn get_size(&self) -> glm::Vec3 {
-        let size = self.max - self.min;
-        size
+        self.max - self.min
     }
 
     /// Returns a reference onto the minimum
@@ -117,6 +115,10 @@ impl AABB {
         }
     }
 
+    /// Checks if the given point is inside the bounding volume.
+    ///
+    /// # Arguments
+    /// * `p` - The point to check.
     #[inline]
     pub fn contains_point(&self, p: &glm::Vec3) -> bool {
         self.min[0] <= p[0]
@@ -127,8 +129,12 @@ impl AABB {
             && p[2] <= self.max[2]
     }
 
+    /// Checks if the given bounding volume is fully inside the bounding volume.
+    ///
+    /// # Arguments
+    /// * `aabb` - The bounding volume to check.
     #[inline]
-    pub fn contains_aabb(&self, aabb: &AABB) -> bool {
+    pub fn contains_aabb(&self, aabb: &Self) -> bool {
         self.min[0] <= aabb.min[0]
             && aabb.max[0] <= self.max[0]
             && self.min[1] <= aabb.min[1]
@@ -158,7 +164,7 @@ impl AABB {
     }
 }
 
-impl Default for AABB {
+impl Default for Aabb {
     #[inline]
     fn default() -> Self {
         Self::new()
@@ -169,7 +175,7 @@ fn vec3_to_string(f: &mut fmt::Formatter<'_>, v: &glm::Vec3) -> fmt::Result {
     write!(f, "({}, {}, {})", v[0], v[1], v[2])
 }
 
-impl Display for AABB {
+impl Display for Aabb {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         vec3_to_string(f, &self.min)?;
         write!(f, "-")?;
@@ -183,7 +189,7 @@ mod test {
 
     #[test]
     fn test_point_distance() {
-        let mut aabb = AABB::new();
+        let mut aabb = Aabb::new();
         aabb.extend_pos(&glm::vec3(0.0, 0.0, 0.0));
         aabb.extend_pos(&glm::vec3(1.0, 1.0, 1.0));
 

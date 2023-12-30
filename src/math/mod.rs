@@ -12,7 +12,6 @@ use nalgebra_glm::{vec4_to_vec3, Mat4, Vec3, Vec4};
 #[inline]
 pub fn transform_vec3(t: &Mat4, p: &Vec3) -> Vec3 {
     let p = t * Vec4::new(p[0], p[1], p[2], 1f32);
-    let p = vec4_to_vec3(&p) / p[3];
 
-    p
+    vec4_to_vec3(&p) / p[3]
 }
