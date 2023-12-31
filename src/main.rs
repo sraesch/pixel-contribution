@@ -9,8 +9,11 @@ use crate::{scene::Scene, stats::Stats};
 
 mod math;
 mod options;
+mod render;
 mod scene;
+mod spatial;
 mod stats;
+mod utils;
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
 fn parse_args() -> Result<Options> {

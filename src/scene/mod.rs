@@ -1,5 +1,7 @@
+mod compressed;
 mod geometry;
 
+pub use compressed::*;
 pub use geometry::*;
 
 use std::{collections::HashMap, path::Path};

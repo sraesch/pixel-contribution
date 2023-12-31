@@ -2,6 +2,9 @@
     "editor.formatOnSave": true,
     "cSpell.words": [
         "AABB",
+        "dequantified",
+        "dequantization",
+        "dequantize",
         "nalgebra",
         "rasterizer"
     ]
