@@ -9,5 +9,8 @@ edition = "2021"
 rasterizer = { path = "../rasterizer" }
 log = "0.4"
 anyhow = "1.0"
+nalgebra-glm = "0.18"
 clap = { version = "4.4", features = ["derive"] }
 simple-logging = "2.0"
+rand = "0.8"
+rand_chacha = "0.3"

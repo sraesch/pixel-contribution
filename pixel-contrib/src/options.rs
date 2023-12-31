@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 use log::{info, LevelFilter};
+use rasterizer::RenderOptions;
 
 /// Workaround for parsing the different log level
 #[derive(ValueEnum, Clone, Copy, Debug)]
@@ -47,6 +48,20 @@ pub struct Options {
 }
 
 impl Options {
+    /// Extracts and returns the rendering options based on the program options.
+    pub fn get_render_options(&self) -> RenderOptions {
+        let num_threads: usize = if self.num_threads == 0 {
+            (std::thread::available_parallelism().unwrap()).into()
+        } else {
+            self.num_threads
+        };
+
+        RenderOptions {
+            num_threads,
+            frame_size: self.size_buffer,
+        }
+    }
+
     /// Dumps the options parameter to the log.
     pub fn dump_to_log(&self) {
         info!("Log-Level: {:?}", self.log_level);
