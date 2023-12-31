@@ -1,5 +1,4 @@
 use nalgebra_glm::{Mat4, Vec3};
-use rasterizer::Aabb;
 
 pub struct View {
     /// The view matrix
@@ -24,32 +23,7 @@ pub struct Sphere {
     pub radius: f32,
 }
 
-impl Sphere {
-    /// Creates a new sphere from the given AABB.
-    ///
-    /// # Arguments
-    /// * `aabb` - The AABB that the sphere should fit.
-    pub fn from_aabb(aabb: &Aabb) -> Self {
-        let center = aabb.get_center();
-        let radius = aabb.get_size().norm() / 2f32;
-
-        Self { center, radius }
-    }
-}
-
 impl View {
-    /// Creates a new view for the given AABB and fovy.
-    ///
-    /// # Arguments
-    /// * `aabb` - The AABB that the view should fit.
-    /// * `fovy` - The field of view in y-direction in radians.
-    /// * `dir` - The direction of the camera, i.e, the directional vector which points toward the
-    ///           object.
-    pub fn new_from_aabb(aabb: &Aabb, fovy: f32, dir: Vec3) -> Self {
-        let sphere = Sphere::from_aabb(aabb);
-        Self::new_from_sphere(&sphere, fovy, dir)
-    }
-
     /// Creates a new view to fit the given sphere and fovy.
     ///
     /// # Arguments
@@ -103,18 +77,5 @@ impl View {
             view_matrix,
             projection_matrix,
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_from_aabb() {
-        let cube = Aabb::new_cube(&Vec3::new(0f32, 0f32, 0f32), 1f32);
-        let sphere = Sphere::from_aabb(&cube);
-        assert_eq!(sphere.center, Vec3::new(0.0f32, 0.0f32, 0.0f32));
-        assert_eq!(sphere.radius, 0.75f32.sqrt());
     }
 }

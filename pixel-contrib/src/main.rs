@@ -1,4 +1,3 @@
-mod camera_data;
 mod options;
 mod ppm;
 mod view;
@@ -6,14 +5,13 @@ mod view;
 use std::{path::PathBuf, str::FromStr, time::Instant};
 
 use anyhow::Result;
-use camera_data::CameraData;
 use clap::Parser;
 use log::{error, info, LevelFilter};
 use nalgebra_glm::{Mat4, Vec3};
 use options::Options;
 use rasterizer::{
-    simple_rasterizer::SimpleRasterizer, Aabb, Frame, Histogram, RenderOptions, RenderStats,
-    Renderer, Scene, Stats, StatsNodeTrait,
+    simple_rasterizer::SimpleRasterizer, Frame, Histogram, RenderOptions, RenderStats, Renderer,
+    Scene, Stats, StatsNodeTrait,
 };
 use view::{Sphere, View};
 
@@ -35,18 +33,15 @@ fn initialize_logging(filter: LevelFilter) {
 ///
 /// # Arguments
 /// * `aabb` - The volume for which the view will be fitted to.
-fn compute_fit_view(aabb: &Aabb) -> (Mat4, Mat4) {
+fn compute_fit_view(sphere: (Vec3, f32)) -> (Mat4, Mat4) {
     let fovy = 90f32.to_radians();
 
-    let view = View::new_from_aabb(aabb, fovy, Vec3::new(0f32, 0f32, 1f32));
+    let sphere = Sphere {
+        center: sphere.0,
+        radius: sphere.1,
+    };
 
-    // TODO: remove, is only for debugging
-    // let sphere = Sphere {
-    //     center: Vec3::new(0f32, 0f32, 0f32),
-    //     radius: 10f32,
-    // };
-
-    // let view = View::new_from_sphere(&sphere, fovy, Vec3::new(0f32, 0f32, 1f32));
+    let view = View::new_from_sphere(&sphere, fovy, Vec3::new(0f32, 0f32, 1f32));
 
     (view.view_matrix, view.projection_matrix)
 }
@@ -114,7 +109,7 @@ fn render_and_save_single_image<R: Renderer>(
             .sum()
     };
 
-    let view = compute_fit_view(&scene.compute_aabb());
+    let view = compute_fit_view(scene.compute_bounding_sphere());
 
     // initialize the renderer
     {

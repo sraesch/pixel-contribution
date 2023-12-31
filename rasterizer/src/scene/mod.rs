@@ -98,6 +98,33 @@ impl Scene {
         })
     }
 
+    /// Computes and returns an approximated bounding sphere for the given scene.
+    /// It is approximated by computing the AABB and then determining the furthest point
+    /// from the center of the AABB. It returns the center and the radius of the sphere.
+    pub fn compute_bounding_sphere(&self) -> (Vec3, f32) {
+        let aabb = self.compute_aabb();
+
+        let center = aabb.get_center();
+
+        let geometries = &self.geometries;
+
+        // determine the furthest point from the center of the aabb using quadratic distance
+        let radius = self.instances.iter().fold(0f32, |value, instance| {
+            let geo = &geometries[instance.geometry_index];
+
+            let d = geo.positions.iter().fold(0f32, |value, p| {
+                let p = transform_vec3(&instance.transform, p);
+                let d = nalgebra_glm::distance2(&center, &p);
+
+                value.max(d)
+            });
+
+            value.max(d)
+        });
+
+        (center, radius.sqrt())
+    }
+
     /// Prints statistics about the loaded scene.
     pub fn print_scene_stats(&self) {
         let mut num_vertices = 0usize;
