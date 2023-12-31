@@ -137,7 +137,7 @@ fn max_deviation_histograms(
 ///
 /// # Arguments
 /// * `scenario` - The test-scenario to execute.
-pub fn test_culler<R: Renderer>(scenario: TestScenario) {
+pub fn test_renderer<R: Renderer>(scenario: TestScenario) {
     let stats = Stats::root();
 
     let scene = scenario.scene;

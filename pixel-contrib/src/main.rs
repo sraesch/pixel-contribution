@@ -83,7 +83,7 @@ fn print_stats(secs: f64, size: usize, num_triangles: usize) {
 /// # Arguments
 /// * `scene` - The scene that is being used for computation.
 /// * `program_options` - The options for the program.
-/// * `culler_options` - The options for the culler to initialize.
+/// * `render_options` - The options for the renderer to initialize.
 fn render_and_save_single_image<R: Renderer>(
     scene: Scene,
     program_options: Options,

@@ -34,7 +34,7 @@ pub struct Options {
     #[arg(short, value_enum, long, default_value_t = LogLevel::Info)]
     pub log_level: LogLevel,
 
-    /// The input file to perform the occlusion culling on
+    /// The input file to perform the pixel contribution analysis on.
     #[arg(short, long)]
     pub input_file: PathBuf,
 

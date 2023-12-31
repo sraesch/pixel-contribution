@@ -73,11 +73,11 @@ pub trait Renderer {
     /// internal acceleration structures
     ///
     /// # Arguments
-    /// * `scene` - The geometry to use for the culling. The renderer will take over the ownership.
+    /// * `scene` - The geometry to use for rendering. The renderer will take over the ownership.
     /// * `options` - The renderer options.
     fn initialize(&mut self, scene: Scene, options: RenderOptions) -> Result<()>;
 
-    /// Computes a frame using culling and determines the visible ids of the objects.
+    /// Renders a frame determines the visible ids of the objects.
     ///
     /// # Arguments
     /// * `histogram` - A mutable reference for returning the object id histogram.

@@ -1,4 +1,4 @@
-use common::{load_two_cubes, test_culler};
+use common::{load_two_cubes, test_renderer};
 use rasterizer::simple_rasterizer::SimpleRasterizer;
 
 mod common;
@@ -6,5 +6,5 @@ mod common;
 #[test]
 fn test_simple_rasterizer() {
     let scenario = load_two_cubes();
-    test_culler::<SimpleRasterizer>(scenario);
+    test_renderer::<SimpleRasterizer>(scenario);
 }
