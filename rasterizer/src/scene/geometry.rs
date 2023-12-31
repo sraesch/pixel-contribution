@@ -1,5 +1,6 @@
-use anyhow::{bail, Result};
 use nalgebra_glm::Vec3;
+
+use crate::{Error, Result};
 
 pub type Triangle = [u32; 3];
 
@@ -20,11 +21,11 @@ impl Geometry {
         // check if the maximal index is out of range
         if let Some(max_index) = triangles.iter().map(|t| t.iter().max().unwrap()).max() {
             if *max_index as usize >= positions.len() {
-                bail!(
+                return Err(Error::InvalidArgument(format!(
                     "The maximal index is {}, but there are only {} positions",
                     *max_index,
                     positions.len()
-                );
+                )));
             }
         }
 

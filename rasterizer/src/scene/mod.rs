@@ -1,5 +1,7 @@
+mod compressed;
 mod geometry;
 
+pub use compressed::*;
 pub use geometry::*;
 
 use std::{collections::HashMap, path::Path};
@@ -13,9 +15,10 @@ use cad_import::{
 use log::{info, warn};
 use nalgebra_glm::{Mat4, Vec3};
 
-use anyhow::{bail, Result};
-
-use crate::math::{transform_vec3, Aabb};
+use crate::{
+    math::{transform_vec3, Aabb},
+    Error, Result,
+};
 
 /// A single instantiated geometry
 #[derive(Clone)]
@@ -132,9 +135,15 @@ impl Scene {
         match input_file.extension() {
             Some(ext) => match ext.to_str() {
                 Some(ext) => Ok(manager.get_mime_types_for_extension(ext)),
-                None => bail!("Input file has invalid extension"),
+                None => Err(Error::InvalidArgument(format!(
+                    "Input file {:?} has invalid extension",
+                    input_file
+                ))),
             },
-            None => bail!("Input file {:?} has no extension", input_file),
+            None => Err(Error::InvalidArgument(format!(
+                "Input file {:?} has no extension",
+                input_file
+            ))),
         }
     }
 
@@ -155,7 +164,10 @@ impl Scene {
             }
         }
 
-        bail!("Cannot find loader for the input file {:?}", file_path)
+        Err(Error::IO(format!(
+            "Cannot find loader for the input file {:?}",
+            file_path
+        )))
     }
 
     /// Creates all geometries and instances by traversing over the structure.
