@@ -1,8 +1,9 @@
 use std::io::{BufWriter, Write};
 
-use anyhow::Result;
 use log::debug;
 use nalgebra_glm::Vec3;
+
+use crate::Result;
 
 #[derive(Clone)]
 pub struct Frame {
@@ -56,16 +57,12 @@ impl Frame {
 
     /// Returns a reference onto the depth buffer.
     pub fn get_depth_buffer(&self) -> Option<&[f32]> {
-        self.depth_buffer
-            .as_ref()
-            .map(|depth_buffer| depth_buffer.as_slice())
+        self.depth_buffer.as_deref()
     }
 
     /// Returns a mutable reference onto the depth buffer.
     pub fn get_depth_buffer_mut(&mut self) -> Option<&mut [f32]> {
-        self.depth_buffer
-            .as_mut()
-            .map(|depth_buffer| depth_buffer.as_mut_slice())
+        self.depth_buffer.as_deref_mut()
     }
 
     /// Writes the depths of the given frame as PGM file with gray colors.
@@ -121,7 +118,7 @@ impl Frame {
                 write!(out, "{} ", depth)?;
 
                 if index > 0 && index % self.get_frame_size() == 0 {
-                    writeln!(out, "")?;
+                    writeln!(out)?;
                 }
 
                 Ok(())
@@ -173,7 +170,7 @@ impl Frame {
                 write!(out, "{} {} {} ", r, g, b)?;
 
                 if index > 0 && index % self.get_frame_size() == 0 {
-                    writeln!(out, "")?;
+                    writeln!(out)?;
                 }
 
                 Ok(())

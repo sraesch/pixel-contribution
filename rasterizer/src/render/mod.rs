@@ -1,14 +1,13 @@
-use crate::{scene::Scene, stats::StatsNode};
+use crate::{scene::Scene, stats::StatsNode, Result};
 
 mod frame;
-mod frame_buffer;
+pub mod frame_buffer;
 mod page;
 pub mod simple_rasterizer;
 
 pub use frame::*;
 pub use page::*;
 
-use anyhow::Result;
 use nalgebra_glm::Mat4;
 
 /// A histogram of the object ids in the frame buffer. The index of the vector is the object id

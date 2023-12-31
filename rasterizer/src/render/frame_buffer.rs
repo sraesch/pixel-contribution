@@ -13,12 +13,10 @@ pub type DepthBufferPrecision = u32;
 /// * `depth` - The depth-value in floating-point encoding.
 #[inline]
 pub fn to_depth_buffer_precision(depth: f32) -> DepthBufferPrecision {
-    debug_assert!(depth >= 0f32 && depth <= 1f32);
+    debug_assert!((0f32..=1f32).contains(&depth));
 
     const F_MAX: f32 = DepthBufferPrecision::MAX as f32;
-    let depth = (depth * F_MAX) as DepthBufferPrecision;
-
-    depth
+    (depth * F_MAX) as DepthBufferPrecision
 }
 
 /// The trait for the depth buffer
@@ -177,19 +175,16 @@ impl<D: DepthBuffer> FrameBuffer<D> {
         let id_buffer = f.get_id_buffer_mut();
         id_buffer.copy_from_slice(&self.id_buffer);
 
-        match f.get_depth_buffer_mut() {
-            Some(depth_buffer) => {
-                depth_buffer
-                    .iter_mut()
-                    .zip(
-                        self.depth_buffer
-                            .get_depth_values()
-                            .iter()
-                            .map(|x| (*x as f32) / (DepthBufferPrecision::MAX as f32)),
-                    )
-                    .for_each(|(dst, src)| *dst = src);
-            }
-            None => {}
+        if let Some(depth_buffer) = f.get_depth_buffer_mut() {
+            depth_buffer
+                .iter_mut()
+                .zip(
+                    self.depth_buffer
+                        .get_depth_values()
+                        .iter()
+                        .map(|x| (*x as f32) / (DepthBufferPrecision::MAX as f32)),
+                )
+                .for_each(|(dst, src)| *dst = src);
         }
     }
 
@@ -265,7 +260,7 @@ impl<D: DepthBuffer> FrameBuffer<D> {
 
             let lambda = (y1 - y0) / (y2 - y0);
             assert!(
-                lambda >= 0f32 && lambda <= 1f32,
+                (0f32..=1f32).contains(&lambda),
                 "Lambda must be between 0 and 1, but is {}. y0={}, y1={}, y2={}",
                 lambda,
                 y0,
@@ -325,7 +320,7 @@ impl<D: DepthBuffer> FrameBuffer<D> {
 
         for y in y0m..(y1m + 1) {
             let yf = clamp((y as f32 - y0) / (y1 - y0), 0f32, 1f32);
-            debug_assert!(0f32 <= yf && yf <= 1f32);
+            debug_assert!((0f32..=1f32).contains(&yf));
 
             let x0 = (p0[0] + yf * (left_x - p0[0])).round();
             let x1 = (p0[0] + yf * (right_x - p0[0])).round();
@@ -381,7 +376,7 @@ impl<D: DepthBuffer> FrameBuffer<D> {
         // draw the scan lines
         for y in y0m..(y1m + 1) {
             let yf = clamp((y1 - y as f32) / (y1 - y0), 0f32, 1f32);
-            debug_assert!(0f32 <= yf && yf <= 1f32);
+            debug_assert!((0f32..=1f32).contains(&yf));
 
             let x0 = (p2[0] + yf * (left_x - p2[0])).round();
             let x1 = (p2[0] + yf * (right_x - p2[0])).round();
@@ -445,7 +440,7 @@ impl<D: DepthBuffer> FrameBuffer<D> {
         debug_assert!(x < self.size || y < self.size);
 
         // make sure depth is within bounds and valid
-        if depth < 0f32 || depth > 1f32 || depth.is_infinite() || depth.is_nan() {
+        if !(0f32..=1f32).contains(&depth) || depth.is_infinite() || depth.is_nan() {
             return;
         }
 
@@ -613,8 +608,8 @@ mod test {
                 x_end - x_start + 1
             };
 
-            assert!(y < 10 || y > 40 || line_length > 0);
-            assert!(y < 10 || y > 40 || last_line_length <= line_length);
+            assert!(!(10..=40).contains(&y) || line_length > 0);
+            assert!(!(10..=40).contains(&y) || last_line_length <= line_length);
 
             last_line_length = line_length;
         }
@@ -665,7 +660,7 @@ mod test {
                 x_end - x_start + 1
             };
 
-            assert!(y < 10 || y > 40 || line_length > 0);
+            assert!(!(10..=40).contains(&y) || line_length > 0);
             assert!(y <= 10 || y > 40 || last_line_length >= line_length);
 
             last_line_length = line_length;

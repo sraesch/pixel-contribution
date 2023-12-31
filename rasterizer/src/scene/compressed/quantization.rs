@@ -174,8 +174,7 @@ pub fn reduce_accuracy_uvec16(x: &mut U16Vec3, num_bits: u16) {
 /// * `num_bits` - The number of bits to remove.
 #[inline]
 pub fn reduce_accuracy_u16(x: u16, num_bits: u16) -> u16 {
-    let result = x >> num_bits;
-    result
+    x >> num_bits
 }
 
 /// Returns the given integer and removes the lower n bits.
@@ -185,8 +184,7 @@ pub fn reduce_accuracy_u16(x: u16, num_bits: u16) -> u16 {
 /// * `n` - The number of bits to remove.
 #[inline]
 pub fn reduce_lower_bits<Integer: IntegerTrait>(x: Integer, n: usize) -> Integer {
-    let result = (x >> n) << n;
-    result
+    (x >> n) << n
 }
 
 /// The descriptor for the de-quantifier operator
@@ -265,9 +263,7 @@ impl<Integer: IntegerTrait> Vec3Quantifier<Integer> {
     pub fn dequantize(&self, q: &[Integer]) -> Vec3 {
         let lambda = Vec3::new(q[0].to_f32(), q[1].to_f32(), q[2].to_f32()) / Integer::F32_MAX;
 
-        let p = self.desc.lower_bound + lambda * self.desc.get_extent();
-
-        p
+        self.desc.lower_bound + lambda * self.desc.get_extent()
     }
 
     /// Quantizes the given vector
@@ -293,9 +289,7 @@ impl<Integer: IntegerTrait> Vec3Quantifier<Integer> {
     /// Returns a fully de-quantized normalized vector, i.e., each value is still normalized between 0 and 1.
     #[inline]
     pub fn dequantize_normalized(&self, q: &[Integer]) -> Vec3 {
-        let lambda = Vec3::new(q[0].to_f32(), q[1].to_f32(), q[2].to_f32()) / Integer::F32_MAX;
-
-        lambda
+        Vec3::new(q[0].to_f32(), q[1].to_f32(), q[2].to_f32()) / Integer::F32_MAX
     }
 
     /// Returns a fully de-quantized normalized vector with the specified precision in bits.
@@ -309,13 +303,11 @@ impl<Integer: IntegerTrait> Vec3Quantifier<Integer> {
         let bits_to_remove = Integer::NUM_BITS - n;
         let max_float = Integer::F32_MAX - ((1 << bits_to_remove) - 1) as f32;
 
-        let lambda = Vec3::new(
+        Vec3::new(
             reduce_lower_bits(q[0], bits_to_remove).to_f32(),
             reduce_lower_bits(q[1], bits_to_remove).to_f32(),
             reduce_lower_bits(q[2], bits_to_remove).to_f32(),
-        ) / max_float;
-
-        lambda
+        ) / max_float
     }
 }
 

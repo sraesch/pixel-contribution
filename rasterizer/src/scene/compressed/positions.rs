@@ -51,6 +51,12 @@ impl CompressedPositions {
         }
     }
 
+    /// Returns true if the compressed positions are empty, i.e., have length 0.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Returns the center of the page
     #[inline]
     pub fn get_de_quantify_descriptor(&self) -> &Vec3QuantifierDesc {
@@ -105,6 +111,12 @@ impl<Integer: IntegerTrait> CompressedPositionsRaw<Integer> {
     #[inline]
     pub fn len(&self) -> usize {
         self.data.len() / 3
+    }
+
+    /// Returns true if the compressed positions are empty, i.e., have length 0.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Returns the i-th position in quantized form.

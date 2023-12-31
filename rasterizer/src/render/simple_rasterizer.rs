@@ -1,4 +1,3 @@
-use anyhow::Result;
 use log::info;
 use nalgebra_glm::{Mat4, Vec3};
 
@@ -7,6 +6,7 @@ use crate::{
     scene::{CompressedPositions, CompressedPositionsRaw, IntegerTrait, Scene},
     spatial::simple::compute_sorting,
     stats::{StatsNode, StatsNodeTrait},
+    Result,
 };
 
 use super::{
@@ -105,9 +105,9 @@ trait PageRasterizer {
     /// * `pmmat` - The combined projection, view and model matrix.
     fn rasterize_page(&mut self, page: &Page, pmmat: &Mat4) {
         match &page.position {
-            CompressedPositions::Bit8(c) => self.rasterize_and_dequantize_page(page, c, &pmmat),
-            CompressedPositions::Bit16(c) => self.rasterize_and_dequantize_page(page, c, &pmmat),
-            CompressedPositions::Bit32(c) => self.rasterize_and_dequantize_page(page, c, &pmmat),
+            CompressedPositions::Bit8(c) => self.rasterize_and_dequantize_page(page, c, pmmat),
+            CompressedPositions::Bit16(c) => self.rasterize_and_dequantize_page(page, c, pmmat),
+            CompressedPositions::Bit32(c) => self.rasterize_and_dequantize_page(page, c, pmmat),
         }
     }
 }

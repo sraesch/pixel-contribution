@@ -28,7 +28,7 @@ pub fn compute_sorting(scene: &Scene, stats: StatsNode) -> Vec<Page> {
 ///
 /// # Arguments
 /// * `scene` - The scene whose instances are turned into pages.
-fn create_simple_pages<'a>(scene: &'a Scene) -> PageReferences<'a> {
+fn create_simple_pages(scene: &Scene) -> PageReferences<'_> {
     info!("Chunkify...");
     let chunks = create_simple_chunks(scene);
     info!("Chunkify...DONE");
@@ -54,7 +54,7 @@ fn create_simple_pages<'a>(scene: &'a Scene) -> PageReferences<'a> {
 ///
 /// # Arguments
 /// * `scene` - The instance of the scene are turned into chunks.
-fn create_simple_chunks<'a>(scene: &'a Scene) -> Vec<Chunk<'a>> {
+fn create_simple_chunks(scene: &Scene) -> Vec<Chunk<'_>> {
     let instances = scene.get_instances();
     let geometries = scene.get_geometries();
 
@@ -82,13 +82,11 @@ fn create_simple_chunks<'a>(scene: &'a Scene) -> Vec<Chunk<'a>> {
                 triangle_range,
             };
 
-            let chunk = Chunk {
+            Chunk {
                 geo_slice,
                 id,
                 transform,
-            };
-
-            chunk
+            }
         })
         .collect();
 

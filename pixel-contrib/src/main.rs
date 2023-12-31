@@ -1,19 +1,10 @@
+mod options;
+
 use anyhow::Result;
 use clap::Parser;
 use log::{error, info, LevelFilter};
-
 use options::Options;
-use stats::StatsNodeTrait;
-
-use crate::{scene::Scene, stats::Stats};
-
-mod math;
-mod options;
-mod render;
-mod scene;
-mod spatial;
-mod stats;
-mod utils;
+use rasterizer::{Scene, Stats, StatsNodeTrait};
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
 fn parse_args() -> Result<Options> {
