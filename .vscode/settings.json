@@ -5,7 +5,9 @@
         "dequantified",
         "dequantization",
         "dequantize",
+        "Dequantizes",
         "nalgebra",
-        "rasterizer"
+        "rasterizer",
+        "rasterizes"
     ]
 }

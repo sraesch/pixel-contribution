@@ -1,4 +1,4 @@
-use nalgebra_glm::{Mat4, Vec3};
+use nalgebra_glm::Vec3;
 
 use crate::utils::clamp;
 
