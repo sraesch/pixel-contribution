@@ -1,6 +1,7 @@
 mod camera_data;
 mod options;
 mod ppm;
+mod view;
 
 use std::{path::PathBuf, str::FromStr, time::Instant};
 
@@ -8,12 +9,13 @@ use anyhow::Result;
 use camera_data::CameraData;
 use clap::Parser;
 use log::{error, info, LevelFilter};
-use nalgebra_glm::Mat4;
+use nalgebra_glm::{Mat4, Vec3};
 use options::Options;
 use rasterizer::{
     simple_rasterizer::SimpleRasterizer, Aabb, Frame, Histogram, RenderOptions, RenderStats,
     Renderer, Scene, Stats, StatsNodeTrait,
 };
+use view::{Sphere, View};
 
 use crate::ppm::{write_depth_buffer, write_id_buffer};
 
@@ -34,13 +36,19 @@ fn initialize_logging(filter: LevelFilter) {
 /// # Arguments
 /// * `aabb` - The volume for which the view will be fitted to.
 fn compute_fit_view(aabb: &Aabb) -> (Mat4, Mat4) {
-    let mut camera_data = CameraData::new();
-    camera_data.focus(aabb).unwrap();
+    let fovy = 90f32.to_radians();
 
-    let model_view_matrix = camera_data.get_model_matrix();
-    let projection_matrix = camera_data.get_projection_matrix();
+    let view = View::new_from_aabb(aabb, fovy, Vec3::new(0f32, 0f32, 1f32));
 
-    (model_view_matrix, projection_matrix)
+    // TODO: remove, is only for debugging
+    // let sphere = Sphere {
+    //     center: Vec3::new(0f32, 0f32, 0f32),
+    //     radius: 10f32,
+    // };
+
+    // let view = View::new_from_sphere(&sphere, fovy, Vec3::new(0f32, 0f32, 1f32));
+
+    (view.view_matrix, view.projection_matrix)
 }
 
 /// Prints the given histogram to the log.
