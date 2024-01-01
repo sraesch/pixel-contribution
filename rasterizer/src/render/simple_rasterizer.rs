@@ -52,7 +52,7 @@ impl Renderer for SimpleRasterizer {
         frame: Option<&mut Frame>,
         view_matrix: nalgebra_glm::Mat4,
         projection_matrix: nalgebra_glm::Mat4,
-    ) -> Result<RenderStats> {
+    ) -> RenderStats {
         let _t = self.stats.register_timing();
         let mut stats: RenderStats = Default::default();
 
@@ -79,7 +79,7 @@ impl Renderer for SimpleRasterizer {
             self.frame_buffer.get_frame(f);
         }
 
-        Ok(stats)
+        stats
     }
 }
 

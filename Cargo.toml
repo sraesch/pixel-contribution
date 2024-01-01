@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["rasterizer", "pixel-contrib"]
+members = ["rasterizer", "pixel-contrib", "pixel-contrib-cli"]
 
 [profile.release-with-debug]
 inherits = "release"

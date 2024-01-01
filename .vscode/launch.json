@@ -7,21 +7,23 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'pixel-contrib'",
+            "name": "Debug executable 'pixel-contrib-cli'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=pixel-contrib",
-                    "--package=pixel-contrib"
+                    "--bin=pixel-contrib-cli",
+                    "--package=pixel-contrib-cli"
                 ],
                 "filter": {
-                    "name": "pixel-contrib",
+                    "name": "pixel-contrib-cli",
                     "kind": "bin"
                 }
             },
             "args": [
                 "-i",
-                "${workspaceFolder}/pixel-contrib/test_data/models/sphere.off"
+                "${workspaceFolder}/test_data/models/sphere.off",
+                "-p",
+                "32"
             ],
             "cwd": "${workspaceFolder}"
         }

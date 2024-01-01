@@ -103,5 +103,5 @@ pub trait Renderer {
         frame: Option<&mut Frame>,
         view_matrix: Mat4,
         projection_matrix: Mat4,
-    ) -> Result<RenderStats>;
+    ) -> RenderStats;
 }

@@ -45,6 +45,10 @@ pub struct Options {
     /// The size of the quadratic frame buffer
     #[arg(short, long, default_value_t = 512usize)]
     pub size_buffer: usize,
+
+    /// The size of the map where the pixel contribution is stored for each pixel (i.e. view).
+    #[arg(short = 'p', long, default_value_t = 256usize)]
+    pub size_pixel_contrib: usize,
 }
 
 impl Options {

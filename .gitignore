@@ -19,3 +19,4 @@ Cargo.lock
 # Ignore the output of our program
 frame_depth.png
 frame_id.png
+contrib_map.png

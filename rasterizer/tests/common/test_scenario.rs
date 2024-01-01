@@ -35,7 +35,7 @@ fn load_glb(data: &'static [u8]) -> Scene {
 
 /// Returns the two cubes test-scenario.
 pub fn load_two_cubes() -> TestScenario {
-    let scene_data = include_bytes!("../../test_data/models/2Boxes.glb");
+    let scene_data = include_bytes!("../../../test_data/models/2Boxes.glb");
     let scene = load_glb(scene_data);
 
     let model_view_matrix = Mat4::from_column_slice(&[
@@ -161,15 +161,13 @@ pub fn test_renderer<R: Renderer>(scenario: TestScenario) {
         let model_view_matrix = view.model_view_matrix;
         let projection_matrix = view.projection_matrix;
 
-        renderer
-            .render_frame(
-                &geo,
-                &mut histogram,
-                None,
-                model_view_matrix,
-                projection_matrix,
-            )
-            .unwrap();
+        renderer.render_frame(
+            &geo,
+            &mut histogram,
+            None,
+            model_view_matrix,
+            projection_matrix,
+        );
 
         let error = max_deviation_histograms(ground_truth, &histogram, total_num_pixels);
         println!("Max Error: {}", error);

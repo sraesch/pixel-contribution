@@ -229,7 +229,7 @@ mod test {
     #[test]
     fn test_quantize_positions() {
         // load cylinder data
-        let cylinder_data = include_bytes!("../../../test_data/models/cylinder.off");
+        let cylinder_data = include_bytes!("../../../../test_data/models/cylinder.off");
         let loader = LoaderOff::new();
 
         let memory_resource = MemoryResource::new(

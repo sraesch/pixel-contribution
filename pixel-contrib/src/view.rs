@@ -1,5 +1,8 @@
 use nalgebra_glm::{Mat4, Vec3};
 
+use crate::Sphere;
+
+/// A camera view defined by its view and projection matrix.
 pub struct View {
     /// The view matrix
     pub view_matrix: Mat4,
@@ -15,12 +18,6 @@ impl Default for View {
             projection_matrix: Mat4::identity(),
         }
     }
-}
-
-/// A sphere defined by its center and radius.
-pub struct Sphere {
-    pub center: Vec3,
-    pub radius: f32,
 }
 
 impl View {
