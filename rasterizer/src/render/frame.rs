@@ -1,9 +1,6 @@
-use std::{
-    io::{BufWriter, Write},
-    path::Path,
-};
+use std::path::Path;
 
-use image::RgbImage;
+use image::{GrayImage, RgbImage};
 use log::debug;
 use nalgebra_glm::Vec3;
 
@@ -69,13 +66,15 @@ impl Frame {
         self.depth_buffer.as_deref_mut()
     }
 
-    /// Writes the depths of the given frame as PGM file with gray colors.
+    /// Writes the depths of the given frame as image with gray colors.
     ///
     /// # Arguments
-    /// * `writer` - The writer to which the depth-buffer will be serialized as PGM.
-    pub fn write_depth_buffer_as_pgm<W: Write>(&self, writer: W) -> Result<()> {
-        let mut out = BufWriter::new(writer);
-
+    /// * `filename` - The filename to which the depth-buffer will be serialized to.
+    pub fn write_depth_buffer<P>(&self, filename: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let frame_size = self.get_frame_size() as u32;
         let depths = self.get_depth_buffer().unwrap();
         let ids = self.get_id_buffer();
 
@@ -100,35 +99,25 @@ impl Frame {
         };
 
         debug!("Writing depth buffer: Min/Max={}/{}", min, max);
+        let mut img = GrayImage::new(frame_size, frame_size);
 
-        writeln!(out, "P2")?;
-        writeln!(out, "{} {}", self.get_frame_size(), self.get_frame_size())?;
-        writeln!(out, "255")?;
-
-        ids.iter()
-            .zip(depths.iter())
-            .map(|(id, depth)| match id {
-                Some(_) => {
-                    if max > min {
-                        ((1f32 - ((*depth - min) / (max - min))) * 255f32).round() as u32
-                    } else {
-                        128u32
+        img.pixels_mut()
+            .zip(ids.iter().zip(depths.iter()))
+            .for_each(|(pixel, (id, depth))| {
+                pixel[0] = match id {
+                    Some(_) => {
+                        if max > min {
+                            let value = clamp((*depth - min) / (max - min), 0f32, 1f32);
+                            (value * 255f32).round() as u8
+                        } else {
+                            128u8
+                        }
                     }
-                }
-                None => 0,
-            })
-            .enumerate()
-            .try_for_each(|(index, depth)| -> std::io::Result<()> {
-                write!(out, "{} ", depth)?;
+                    None => 0,
+                };
+            });
 
-                if index > 0 && index % self.get_frame_size() == 0 {
-                    writeln!(out)?;
-                }
-
-                Ok(())
-            })?;
-
-        Ok(())
+        img.save(filename).map_err(|e| Error::IO(format!("{}", e)))
     }
 
     /// Writes the id buffer of the given frame as colored image.
