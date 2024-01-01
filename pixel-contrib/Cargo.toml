@@ -11,6 +11,7 @@ log = "0.4"
 nalgebra-glm = "0.18"
 image = "0.24"
 quick-error = "2.0"
+colorgrad = "0.6"
 
 [dev-dependencies]
 cad_import = "0.3.1"

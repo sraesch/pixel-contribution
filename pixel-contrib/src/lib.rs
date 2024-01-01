@@ -9,7 +9,7 @@ pub use view::*;
 
 use std::path::Path;
 
-use image::GrayImage;
+use image::RgbImage;
 use log::info;
 use nalgebra_glm::Vec2;
 use rasterizer::{
@@ -51,8 +51,18 @@ where
 
     *render_stats = Default::default();
 
-    let total_num_pixels =
-        (options.render_options.frame_size * options.render_options.frame_size) as f32;
+    // Determine the maximum number of pixels that can be filled. This can only be the bounding
+    // sphere fully cover the screen, i.e., the largest possible sphere on the screen.
+    // Therefore, the maximal number of possible pixels is the area of the 2D sphere filling
+    // the quadratic frame.
+    let max_num_pixels_filled = {
+        let r = options.render_options.frame_size as f32 / 2f32;
+        std::f32::consts::PI * r * r
+    };
+
+    // let max_num_pixels_filled =
+    //     (options.render_options.frame_size * options.render_options.frame_size) as f32;
+
     let contrib_map_size = options.contrib_map_size;
     let render_options = options.render_options.clone();
 
@@ -108,9 +118,19 @@ where
                 view.projection_matrix,
             );
 
-            let total_num_pixel: u32 = histogram.iter().sum();
-            *p = total_num_pixel as f32 / total_num_pixels;
+            let num_pixels_filled: u32 = histogram.iter().sum();
+            *p = num_pixels_filled as f32 / max_num_pixels_filled;
         });
+
+    println!();
+
+    info!(
+        "Max contribution: {} ",
+        pixel_contrib
+            .pixel_contrib
+            .iter()
+            .fold(0f32, |a, b| a.max(*b))
+    );
 
     pixel_contrib
 }
@@ -145,14 +165,22 @@ impl PixelContribution {
     /// # Arguments
     /// * `path` - The path to which the image should be written.
     pub fn write_image<P: AsRef<Path>>(&self, path: P) -> error::Result<()> {
-        let mut img = GrayImage::new(self.size as u32, self.size as u32);
+        let mut img = RgbImage::new(self.size as u32, self.size as u32);
+
+        let g = colorgrad::turbo();
+        let (min_val, max_val) = g.domain();
 
         self.pixel_contrib
             .iter()
             .zip(img.pixels_mut())
             .for_each(|(p, pixel)| {
-                let v = clamp((p * 255.0).round(), 0f32, 255f32) as u8;
-                pixel[0] = v;
+                let p = *p as f64;
+                let p = clamp(p * max_val + (1f64 - p) * min_val, min_val, max_val);
+                let c = g.at(p).to_rgba8();
+
+                pixel[0] = c[0];
+                pixel[1] = c[1];
+                pixel[2] = c[2];
             });
 
         img.save(path)?;
