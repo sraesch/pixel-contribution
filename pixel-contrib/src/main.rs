@@ -1,5 +1,5 @@
+mod colormap;
 mod options;
-mod ppm;
 mod view;
 
 use std::{path::PathBuf, str::FromStr, time::Instant};
@@ -15,7 +15,7 @@ use rasterizer::{
 };
 use view::{Sphere, View};
 
-use crate::ppm::{write_depth_buffer, write_id_buffer};
+use crate::colormap::create_color_map;
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
 fn parse_args() -> Result<Options> {
@@ -142,16 +142,16 @@ fn render_and_save_single_image<R: Renderer>(
         {
             let _t = occ_timings.get_child("write").register_timing();
 
-            let id_file = PathBuf::from_str("frame_id.ppm").unwrap();
-            let depth_file = PathBuf::from_str("frame_depth.pgm").unwrap();
+            let id_file = PathBuf::from_str("frame_id.png").unwrap();
+            let depth_file = PathBuf::from_str("frame_depth.png").unwrap();
 
             info!("Write id buffer...");
-            write_id_buffer(&id_file, &frame)?;
+            frame.write_id_buffer(id_file, create_color_map)?;
             info!("Write id buffer...DONE");
 
             if frame.get_depth_buffer().is_some() {
                 info!("Write depth buffer...");
-                write_depth_buffer(&depth_file, &frame)?;
+                frame.write_depth_buffer(depth_file)?;
                 info!("Write depth buffer...DONE");
             }
         }

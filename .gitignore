@@ -17,5 +17,5 @@ Cargo.lock
 .DS_Store
 
 # Ignore the output of our program
-frame_depth.pgm
-frame_id.ppm
+frame_depth.png
+frame_id.png
