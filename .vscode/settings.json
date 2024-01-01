@@ -6,6 +6,7 @@
         "dequantization",
         "dequantize",
         "Dequantizes",
+        "fovy",
         "nalgebra",
         "rasterizer",
         "rasterizes"
