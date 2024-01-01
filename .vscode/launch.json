@@ -1,0 +1,29 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'pixel-contrib'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=pixel-contrib",
+                    "--package=pixel-contrib"
+                ],
+                "filter": {
+                    "name": "pixel-contrib",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-i",
+                "${workspaceFolder}/pixel-contrib/test_data/models/sphere.off"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
