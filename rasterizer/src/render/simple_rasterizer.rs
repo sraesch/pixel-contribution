@@ -5,8 +5,8 @@ use crate::{
     math::transform_vec3,
     scene::{CompressedPositions, CompressedPositionsRaw, IntegerTrait, Scene},
     spatial::simple::compute_sorting,
-    stats::{StatsNode, StatsNodeTrait},
-    Result,
+    stats::StatsNode,
+    RendererGeometry, Result, StatsNodeTrait,
 };
 
 use super::{
@@ -18,15 +18,15 @@ use super::{
 pub struct SimpleRasterizer {
     stats: StatsNode,
     frame_buffer: FrameBuffer<SimpleDepthBuffer>,
-    pages: Vec<Page>,
 }
 
 impl Renderer for SimpleRasterizer {
+    type G = SimpleRasterizerGeometry;
+
     fn new(stats: StatsNode) -> Self {
         Self {
             stats,
             frame_buffer: Default::default(),
-            pages: Default::default(),
         }
     }
 
@@ -34,7 +34,7 @@ impl Renderer for SimpleRasterizer {
         "Simple Rasterizer"
     }
 
-    fn initialize(&mut self, scene: Scene, options: RenderOptions) -> Result<()> {
+    fn initialize(&mut self, options: RenderOptions) -> Result<()> {
         info!(
             "Initialize simple rasterizer with size {}x{}",
             options.frame_size, options.frame_size
@@ -42,22 +42,21 @@ impl Renderer for SimpleRasterizer {
 
         self.frame_buffer = FrameBuffer::new(options.frame_size);
 
-        let init_timings = self.stats.get_child("init");
-        self.pages = compute_sorting(&scene, init_timings.get_child("spatial_sorting"));
-
         Ok(())
     }
 
     fn render_frame(
         &mut self,
+        geo: &SimpleRasterizerGeometry,
         histogram: &mut Histogram,
         frame: Option<&mut Frame>,
         view_matrix: nalgebra_glm::Mat4,
         projection_matrix: nalgebra_glm::Mat4,
     ) -> Result<RenderStats> {
+        let _t = self.stats.register_timing();
         let mut stats: RenderStats = Default::default();
 
-        let pages = self.pages.as_slice();
+        let pages = geo.pages.as_slice();
 
         let frame_buffer = &mut self.frame_buffer;
 
@@ -150,6 +149,18 @@ impl<D: DepthBuffer> PageRasterizer for FrameBuffer<D> {
 
             self.rasterize(id, &p0, &p1, &p2);
         }
+    }
+}
+
+pub struct SimpleRasterizerGeometry {
+    pub pages: Vec<Page>,
+}
+
+impl RendererGeometry for SimpleRasterizerGeometry {
+    fn new(scene: &Scene, stats: StatsNode) -> Self {
+        let pages = compute_sorting(scene, stats);
+
+        Self { pages }
     }
 }
 

@@ -11,7 +11,7 @@ use nalgebra_glm::{Mat4, Vec3};
 use options::Options;
 use rasterizer::{
     simple_rasterizer::SimpleRasterizer, Frame, Histogram, RenderOptions, RenderStats, Renderer,
-    Scene, Stats, StatsNodeTrait,
+    RendererGeometry, Scene, Stats, StatsNodeTrait,
 };
 use view::{Sphere, View};
 
@@ -111,13 +111,27 @@ fn render_and_save_single_image<R: Renderer>(
 
     let view = compute_fit_view(scene.compute_bounding_sphere());
 
+    // create rendering geometry
+    let render_geometry = {
+        info!("Prepare geometry...");
+        let start = Instant::now();
+
+        let render_geometry = R::G::new(&scene, occ_timings.get_child("prepare_geometry"));
+
+        let duration = start.elapsed();
+        info!("Prepare geometry...DONE in {} s", duration.as_secs_f32());
+
+        render_geometry
+    };
+
     // initialize the renderer
     {
         let _t = occ_timings.get_child("init").register_timing();
 
         info!("Initialize renderer...");
         let start = Instant::now();
-        renderer.initialize(scene, render_options.clone())?;
+
+        renderer.initialize(render_options.clone())?;
         let duration = start.elapsed();
         info!("Initialize renderer...DONE in {} s", duration.as_secs_f32());
     }
@@ -135,7 +149,13 @@ fn render_and_save_single_image<R: Renderer>(
         let s = {
             let _t = occ_timings.get_child("compute").register_timing();
 
-            renderer.render_frame(&mut histogram, Some(&mut frame), view.0, view.1)?
+            renderer.render_frame(
+                &render_geometry,
+                &mut histogram,
+                Some(&mut frame),
+                view.0,
+                view.1,
+            )?
         };
 
         // writing results to HDD

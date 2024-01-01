@@ -57,9 +57,22 @@ impl Default for RenderOptions {
     }
 }
 
+/// The geometry used for rendering.
+pub trait RendererGeometry {
+    /// Creates a new renderer geometry from the given scene and takes ownership of the scene.
+    ///
+    /// # Arguments
+    /// * `scene` - The scene to create the renderer geometry from.
+    /// * `stats` - The stats node to log the timing for creating the geometry.
+    fn new(scene: &Scene, stats: StatsNode) -> Self;
+}
+
 /// A renderer renders a single frame based on the provided scene.
 /// The resulting frame contains the object for each pixel.
 pub trait Renderer {
+    /// The optimized geometry used for rendering.
+    type G: RendererGeometry;
+
     /// Creates and returns a new renderer instance.
     ///
     /// # Arguments
@@ -69,23 +82,23 @@ pub trait Renderer {
     /// Returns the name of the renderer
     fn get_name(&self) -> &str;
 
-    /// Initializes the renderer for the given scene and frame size, e.g., create
-    /// internal acceleration structures
+    /// Initializes the renderer with the given frame size.
     ///
     /// # Arguments
-    /// * `scene` - The geometry to use for rendering. The renderer will take over the ownership.
     /// * `options` - The renderer options.
-    fn initialize(&mut self, scene: Scene, options: RenderOptions) -> Result<()>;
+    fn initialize(&mut self, options: RenderOptions) -> Result<()>;
 
     /// Renders a frame determines the visible ids of the objects.
     ///
     /// # Arguments
+    /// * `geo` - The geometry to render.
     /// * `histogram` - A mutable reference for returning the object id histogram.
     /// * `frame` - Optionally a mutable reference onto the frame to return the resulting pixels.
     /// * `view_matrix` - The camera view matrix.
     /// * `projection_matrix` - The camera projection matrix.
     fn render_frame(
         &mut self,
+        geo: &Self::G,
         histogram: &mut Histogram,
         frame: Option<&mut Frame>,
         view_matrix: Mat4,

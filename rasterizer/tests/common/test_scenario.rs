@@ -1,6 +1,6 @@
 use cad_import::loader::{loader_gltf::LoaderGLTF, Loader, MemoryResource};
 use nalgebra_glm::Mat4;
-use rasterizer::{Histogram, RenderOptions, Renderer, Scene, Stats};
+use rasterizer::{Histogram, RenderOptions, Renderer, RendererGeometry, Scene, Stats};
 
 /// A single view with expected resulting rasterization result
 pub struct TestView {
@@ -150,8 +150,10 @@ pub fn test_renderer<R: Renderer>(scenario: TestScenario) {
 
     let total_num_pixels = (options.frame_size * options.frame_size) as f32;
 
+    let geo = R::G::new(&scene, stats.clone());
+
     let mut renderer = R::new(stats);
-    renderer.initialize(scene, options).unwrap();
+    renderer.initialize(options).unwrap();
 
     for view in views {
         let ground_truth = &view.expected_histogram;
@@ -160,7 +162,13 @@ pub fn test_renderer<R: Renderer>(scenario: TestScenario) {
         let projection_matrix = view.projection_matrix;
 
         renderer
-            .render_frame(&mut histogram, None, model_view_matrix, projection_matrix)
+            .render_frame(
+                &geo,
+                &mut histogram,
+                None,
+                model_view_matrix,
+                projection_matrix,
+            )
             .unwrap();
 
         let error = max_deviation_histograms(ground_truth, &histogram, total_num_pixels);
