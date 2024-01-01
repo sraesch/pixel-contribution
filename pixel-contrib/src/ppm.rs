@@ -13,9 +13,10 @@ use rasterizer::Frame;
 /// * `file_name` - The filename for the file to which the ids are written
 /// * `frame` - The frame to write.
 pub fn write_id_buffer(file_name: &Path, frame: &Frame) -> Result<()> {
-    let out = File::create(file_name)?;
+    // let out = File::create(file_name)?;
 
-    frame.write_id_buffer_as_ppm(out, gen_random_colors)?;
+    // frame.write_id_buffer_as_ppm(out, gen_random_colors)?;
+    frame.write_id_buffer(file_name, gen_random_colors)?;
 
     Ok(())
 }
