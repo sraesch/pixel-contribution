@@ -1,3 +1,5 @@
-mod renderer;
+mod event_handler;
+mod canvas;
 
-pub use renderer::*;
+pub use event_handler::*;
+pub use canvas::*;
