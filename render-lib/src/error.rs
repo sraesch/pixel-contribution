@@ -13,6 +13,15 @@ quick_error! {
         GraphicsAPI(err: String) {
             display("{}", err)
         }
+        Shader(err: std::string::String) {
+            display("{}", err)
+        }
+        Texture(err: std::string::String) {
+            display("{}", err)
+        }
+        FrameBuffer(err: std::string::String) {
+            display("{}", err)
+        }
         InvalidArgument(err: String) {
             display("{}", err)
         }

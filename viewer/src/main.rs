@@ -4,10 +4,13 @@ use std::error::Error;
 
 use clap::Parser;
 use log::{error, info, trace, LevelFilter};
+use nalgebra_glm::Vec4;
 use options::Options;
 
 use anyhow::Result;
-use render_lib::{create_and_run_canvas, CanvasOptions, EventHandler, Key, MouseButton};
+use render_lib::{
+    create_and_run_canvas, CanvasOptions, EventHandler, FrameBuffer, Key, MouseButton,
+};
 
 struct ViewerImpl {}
 
@@ -23,6 +26,7 @@ impl EventHandler for ViewerImpl {
 
     fn next_frame(&mut self) {
         trace!("debug frame");
+        FrameBuffer::clear_buffers(&Vec4::new(0.0, 0.1, 0.2, 1.0));
     }
 
     fn resize(&mut self, w: u32, h: u32) {
