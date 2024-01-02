@@ -5,9 +5,13 @@ mod view;
 
 pub use error::*;
 pub use sphere::*;
+use thread_local::ThreadLocal;
 pub use view::*;
 
-use std::path::Path;
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use image::RgbImage;
 use log::info;
@@ -16,6 +20,7 @@ use rasterizer::{
     clamp, Histogram, RenderOptions, RenderStats, Renderer, RendererGeometry, Scene, StatsNode,
     StatsNodeTrait,
 };
+use rayon::prelude::*;
 
 use crate::octahedron::decode_octahedron_normal;
 
@@ -23,6 +28,9 @@ use crate::octahedron::decode_octahedron_normal;
 pub struct PixelContributionOptions {
     /// The options for the underlying renderer.
     pub render_options: RenderOptions,
+
+    /// The number of threads to use for the computation.
+    pub num_threads: usize,
 
     /// The size of the quadratic pixel contribution map.
     pub contrib_map_size: usize,
@@ -49,6 +57,13 @@ where
 {
     let _t = stats.register_timing();
 
+    // initialize thread pool for rayon
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(options.num_threads)
+        .build_global()
+        .unwrap();
+
+    // initialize render stats to 0
     *render_stats = Default::default();
 
     // Determine the maximum number of pixels that can be filled. This can only be the bounding
@@ -59,9 +74,6 @@ where
         let r = options.render_options.frame_size as f32 / 2f32;
         std::f32::consts::PI * r * r
     };
-
-    // let max_num_pixels_filled =
-    //     (options.render_options.frame_size * options.render_options.frame_size) as f32;
 
     let contrib_map_size = options.contrib_map_size;
     let render_options = options.render_options.clone();
@@ -78,17 +90,27 @@ where
         bounding_sphere.center, bounding_sphere.radius
     );
 
-    let mut renderer = R::new(stats.clone());
-    renderer.initialize(render_options).unwrap();
-
     let mut pixel_contrib = PixelContribution::new(contrib_map_size);
+
+    let mtx_render_stats = Arc::new(Mutex::new(RenderStats::default()));
+
+    let renderer: ThreadLocal<Arc<Mutex<R>>> = ThreadLocal::new();
 
     pixel_contrib
         .pixel_contrib
-        .iter_mut()
+        .par_iter_mut()
         .enumerate()
         .for_each(|(index, p)| {
-            print_progress(index, contrib_map_size * contrib_map_size);
+            // create renderer if not already done
+            let mut renderer = renderer
+                .get_or(|| {
+                    let mut r = R::new(stats.clone());
+                    r.initialize(render_options.clone()).unwrap();
+
+                    Arc::new(Mutex::new(r))
+                })
+                .lock()
+                .unwrap();
 
             // compute normalized pixel position
             let (x, y) = (
@@ -110,7 +132,7 @@ where
 
             // render the scene
             let mut histogram = Histogram::new();
-            *render_stats += renderer.render_frame(
+            let r = renderer.render_frame(
                 &geo,
                 &mut histogram,
                 None,
@@ -118,9 +140,13 @@ where
                 view.projection_matrix,
             );
 
+            *mtx_render_stats.lock().unwrap() += r;
+
             let num_pixels_filled: u32 = histogram.iter().sum();
             *p = num_pixels_filled as f32 / max_num_pixels_filled;
         });
+
+    *render_stats = mtx_render_stats.lock().unwrap().clone();
 
     println!();
 

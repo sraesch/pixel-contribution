@@ -59,6 +59,7 @@ fn execute_pixel_contribution_program(options: &Options, scene: &Scene) -> Resul
 
     let contrib_options = PixelContributionOptions {
         render_options: render_options.clone(),
+        num_threads: options.num_threads,
         contrib_map_size: options.size_pixel_contrib,
         fovy: 90f32.to_radians(),
     };

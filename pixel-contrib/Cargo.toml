@@ -12,6 +12,8 @@ nalgebra-glm = "0.18"
 image = "0.24"
 quick-error = "2.0"
 colorgrad = "0.6"
+rayon = "1.8"
+thread_local = "1.1"
 
 [dev-dependencies]
 cad_import = "0.3.1"
