@@ -1,13 +1,18 @@
 mod error;
 pub mod octahedron;
+mod progress;
 mod sphere;
 mod view;
 
 pub use error::*;
 pub use sphere::*;
+use thread_local::ThreadLocal;
 pub use view::*;
 
-use std::path::Path;
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use image::RgbImage;
 use log::info;
@@ -16,6 +21,7 @@ use rasterizer::{
     clamp, Histogram, RenderOptions, RenderStats, Renderer, RendererGeometry, Scene, StatsNode,
     StatsNodeTrait,
 };
+use rayon::prelude::*;
 
 use crate::octahedron::decode_octahedron_normal;
 
@@ -23,6 +29,9 @@ use crate::octahedron::decode_octahedron_normal;
 pub struct PixelContributionOptions {
     /// The options for the underlying renderer.
     pub render_options: RenderOptions,
+
+    /// The number of threads to use for the computation.
+    pub num_threads: usize,
 
     /// The size of the quadratic pixel contribution map.
     pub contrib_map_size: usize,
@@ -49,19 +58,23 @@ where
 {
     let _t = stats.register_timing();
 
+    // initialize thread pool for rayon
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(options.num_threads)
+        .build_global()
+        .unwrap();
+
+    // initialize render stats to 0
     *render_stats = Default::default();
 
     // Determine the maximum number of pixels that can be filled. This can only be the bounding
-    // sphere fully cover the screen, i.e., the largest possible sphere on the screen.
+    // sphere fit tightly into the screen, i.e., the largest possible sphere on the screen.
     // Therefore, the maximal number of possible pixels is the area of the 2D sphere filling
     // the quadratic frame.
     let max_num_pixels_filled = {
         let r = options.render_options.frame_size as f32 / 2f32;
         std::f32::consts::PI * r * r
     };
-
-    // let max_num_pixels_filled =
-    //     (options.render_options.frame_size * options.render_options.frame_size) as f32;
 
     let contrib_map_size = options.contrib_map_size;
     let render_options = options.render_options.clone();
@@ -78,17 +91,30 @@ where
         bounding_sphere.center, bounding_sphere.radius
     );
 
-    let mut renderer = R::new(stats.clone());
-    renderer.initialize(render_options).unwrap();
-
+    let mtx_render_stats = Arc::new(Mutex::new(RenderStats::default()));
+    let renderer: ThreadLocal<Arc<Mutex<R>>> = ThreadLocal::new();
+    let progress = Arc::new(Mutex::new(progress::Progress::new(
+        contrib_map_size * contrib_map_size,
+    )));
     let mut pixel_contrib = PixelContribution::new(contrib_map_size);
 
     pixel_contrib
         .pixel_contrib
-        .iter_mut()
+        .par_iter_mut()
         .enumerate()
         .for_each(|(index, p)| {
-            print_progress(index, contrib_map_size * contrib_map_size);
+            progress.lock().unwrap().update();
+
+            // create renderer if not already done
+            let mut renderer = renderer
+                .get_or(|| {
+                    let mut r = R::new(stats.clone());
+                    r.initialize(render_options.clone()).unwrap();
+
+                    Arc::new(Mutex::new(r))
+                })
+                .lock()
+                .unwrap();
 
             // compute normalized pixel position
             let (x, y) = (
@@ -101,26 +127,21 @@ where
                 (y + 0.5) / contrib_map_size as f32,
             );
 
-            // determine the view direction
+            // determine the view direction for the current pixel
             let dir = decode_octahedron_normal(Vec2::new(u, v));
 
-            // create view for the current pixel
-            let fovy = options.fovy;
-            let view = View::new_from_sphere(&bounding_sphere, fovy, dir);
+            // create view based on the view direction
+            let view = View::new_from_sphere(&bounding_sphere, options.fovy, dir);
 
             // render the scene
-            let mut histogram = Histogram::new();
-            *render_stats += renderer.render_frame(
-                &geo,
-                &mut histogram,
-                None,
-                view.view_matrix,
-                view.projection_matrix,
-            );
+            let renderer: &mut R = &mut renderer;
+            let num_pixels_filled =
+                count_number_of_filled_pixel(renderer, &view, &geo, mtx_render_stats.clone());
 
-            let num_pixels_filled: u32 = histogram.iter().sum();
             *p = num_pixels_filled as f32 / max_num_pixels_filled;
         });
+
+    *render_stats = mtx_render_stats.lock().unwrap().clone();
 
     println!();
 
@@ -133,6 +154,33 @@ where
     );
 
     pixel_contrib
+}
+
+/// Counts the number of filled pixels for the given view and geometry using the given renderer.
+///
+/// # Arguments
+/// * `renderer` - The renderer to use for the computation.
+/// * `view` - The view for which the number of filled pixels should be computed.
+/// * `geo` - The geometry to render.
+/// * `mtx_render_stats` - The stats node to log the rendering stats.
+fn count_number_of_filled_pixel<R: Renderer>(
+    renderer: &mut R,
+    view: &View,
+    geo: &R::G,
+    mtx_render_stats: Arc<Mutex<RenderStats>>,
+) -> u32 {
+    let mut histogram = Histogram::new();
+    let r = renderer.render_frame(
+        &geo,
+        &mut histogram,
+        None,
+        view.view_matrix,
+        view.projection_matrix,
+    );
+
+    *mtx_render_stats.lock().unwrap() += r;
+
+    histogram.iter().sum()
 }
 
 /// The resulting pixel contribution for all possible views.
@@ -197,25 +245,4 @@ fn compute_bounding_sphere(scene: &Scene) -> Sphere {
     let sphere = scene.compute_bounding_sphere();
 
     Sphere::from(sphere)
-}
-
-/// Prints the progress of the current task to the console.
-///
-/// # Arguments
-/// * `cur` - The current progress.
-/// * `total` - The total number of steps.
-fn print_progress(cur: usize, total: usize) {
-    let bar_length = 50;
-    let progress = cur as f32 / total as f32;
-    let num_bars = (progress * bar_length as f32) as usize;
-    let num_spaces = bar_length - num_bars;
-
-    print!("\r[");
-    for _ in 0..num_bars {
-        print!("=");
-    }
-    for _ in 0..num_spaces {
-        print!(" ");
-    }
-    print!("] {:.2}%", progress * 100.0);
 }

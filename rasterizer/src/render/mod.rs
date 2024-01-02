@@ -58,7 +58,7 @@ impl Default for RenderOptions {
 }
 
 /// The geometry used for rendering.
-pub trait RendererGeometry {
+pub trait RendererGeometry: Send + Sync {
     /// Creates a new renderer geometry from the given scene and takes ownership of the scene.
     ///
     /// # Arguments
@@ -69,7 +69,7 @@ pub trait RendererGeometry {
 
 /// A renderer renders a single frame based on the provided scene.
 /// The resulting frame contains the object for each pixel.
-pub trait Renderer {
+pub trait Renderer: Send {
     /// The optimized geometry used for rendering.
     type G: RendererGeometry;
 
