@@ -1,4 +1,7 @@
-use std::num::NonZeroU32;
+use std::{
+    ffi::{CStr, CString},
+    num::NonZeroU32,
+};
 
 use crate::{Error, EventHandler, Result};
 use glutin::{
@@ -34,17 +37,12 @@ where
 {
     info!("Creating canvas...");
 
+    // create event loop with control flow set to Poll, i.e., the event loop will run as fast as
+    // possible
     debug!("Create event loop...");
     let event_loop = EventLoop::new().map_err(|e| Error::GraphicsAPI(format!("{}", e)))?;
-    // ControlFlow::Poll continuously runs the event loop, even if the OS hasn't
-    // dispatched any events. This is ideal for games and similar applications.
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    // Only Windows requires the window to be present before creating the display.
-    // Other platforms don't really need one.
-    //
-    // XXX if you don't care about running on Android or so you can safely remove
-    // this condition and always pass the window builder.
     debug!("Create windows builder...");
     let window_builder = if cfg!(wgl_backend) {
         WindowBuilder::new()
@@ -60,7 +58,7 @@ where
     // The template will match only the configurations supporting rendering
     // to windows.
     //
-    // XXX We force transparency only on macOS, given that EGL on X11 doesn't
+    // We force transparency only on macOS, given that EGL on X11 doesn't
     // have it, but we still want to show window. The macOS situation is like
     // that, because we can query only one config at a time on it, but all
     // normal platforms will return multiple configs, so we can find the config
@@ -91,43 +89,32 @@ where
         })
         .map_err(|e| Error::GraphicsAPI(format!("{}", e)))?;
 
-    info!("Display configuration: {:?}", gl_config);
+    debug!("Display configuration: {:?}", gl_config);
 
     let raw_window_handle = window.as_ref().map(|window| window.raw_window_handle());
 
-    // XXX The display could be obtained from any object created by it, so we can
+    // The display could be obtained from any object created by it, so we can
     // query it from the config.
     let gl_display = gl_config.display();
+
+    info!("Load OpenGL function pointers...");
+    gl::load_with(|symbol| {
+        let symbol = CString::new(symbol).unwrap();
+        let symbol = symbol.as_c_str();
+        gl_display.get_proc_address(symbol) as *const _
+    });
 
     // The context creation part. It can be created before surface and that's how
     // it's expected in multithreaded + multiwindow operation mode, since you
     // can send NotCurrentContext, but not Surface.
-    let context_attributes = ContextAttributesBuilder::new().build(raw_window_handle);
-
-    // Since glutin by default tries to create OpenGL core context, which may not be
-    // present we should try gles.
-    let fallback_context_attributes = ContextAttributesBuilder::new()
-        .with_context_api(ContextApi::Gles(None))
-        .build(raw_window_handle);
-
-    // There are also some old devices that support neither modern OpenGL nor GLES.
-    // To support these we can try and create a 2.1 context.
-    let legacy_context_attributes = ContextAttributesBuilder::new()
-        .with_context_api(ContextApi::OpenGl(Some(Version::new(2, 1))))
+    let context_attributes = ContextAttributesBuilder::new()
+        .with_context_api(ContextApi::OpenGl(Some(Version::new(4, 0))))
         .build(raw_window_handle);
 
     let mut not_current_gl_context = Some(unsafe {
         gl_display
             .create_context(&gl_config, &context_attributes)
-            .unwrap_or_else(|_| {
-                gl_display
-                    .create_context(&gl_config, &fallback_context_attributes)
-                    .unwrap_or_else(|_| {
-                        gl_display
-                            .create_context(&gl_config, &legacy_context_attributes)
-                            .expect("failed to create context")
-                    })
-            })
+            .expect("failed to create context")
     });
 
     let mut state = None;
@@ -164,6 +151,19 @@ where
                     // buffers. It also performs function loading, which needs a current context on
                     // WGL.
                     if !is_initialized {
+                        let s = unsafe { CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8) }
+                            .to_str()
+                            .expect("Failed to get vendor string");
+                        info!("Vendor: {}", s);
+                        let s = unsafe { CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8) }
+                            .to_str()
+                            .expect("Failed to get renderer string");
+                        info!("Renderer: {}", s);
+                        let s = unsafe { CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8) }
+                            .to_str()
+                            .expect("Failed to get version string");
+                        info!("Version: {}", s);
+
                         if let Err(err) = handler.setup() {
                             error!("Error during setup: {}", err);
                         }
