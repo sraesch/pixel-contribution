@@ -1,5 +1,6 @@
 mod error;
 pub mod octahedron;
+mod progress;
 mod sphere;
 mod view;
 
@@ -96,11 +97,16 @@ where
 
     let renderer: ThreadLocal<Arc<Mutex<R>>> = ThreadLocal::new();
 
+    let progress = Arc::new(Mutex::new(progress::Progress::new(
+        contrib_map_size * contrib_map_size,
+    )));
     pixel_contrib
         .pixel_contrib
         .par_iter_mut()
         .enumerate()
         .for_each(|(index, p)| {
+            progress.lock().unwrap().update();
+
             // create renderer if not already done
             let mut renderer = renderer
                 .get_or(|| {
@@ -223,25 +229,4 @@ fn compute_bounding_sphere(scene: &Scene) -> Sphere {
     let sphere = scene.compute_bounding_sphere();
 
     Sphere::from(sphere)
-}
-
-/// Prints the progress of the current task to the console.
-///
-/// # Arguments
-/// * `cur` - The current progress.
-/// * `total` - The total number of steps.
-fn print_progress(cur: usize, total: usize) {
-    let bar_length = 50;
-    let progress = cur as f32 / total as f32;
-    let num_bars = (progress * bar_length as f32) as usize;
-    let num_spaces = bar_length - num_bars;
-
-    print!("\r[");
-    for _ in 0..num_bars {
-        print!("=");
-    }
-    for _ in 0..num_spaces {
-        print!(" ");
-    }
-    print!("] {:.2}%", progress * 100.0);
 }
