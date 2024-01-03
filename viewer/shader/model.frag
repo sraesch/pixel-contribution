@@ -22,5 +22,7 @@ void main() {
     vec3 yTangent = dFdy(var_pos);
     vec3 faceNormal = normalize(cross(xTangent, yTangent));
 
-    frag_color = vec4(faceNormal / 2.0 + 0.5, 1.0);
+    float brightness = abs(faceNormal.z) / 2.0 + 0.5;
+
+    frag_color = vec4(brightness, brightness, brightness, 1.0);
 }
