@@ -1,13 +1,17 @@
 use std::error::Error;
 
 pub use winit::event::MouseButton;
-pub use winit::keyboard::KeyCode as Key;
+pub use winit::keyboard::Key;
 
 /// The trait for a handling events during rendering.
 pub trait EventHandler {
     /// Callback for initializing the OpenGL setup. This is called once before the first frame.
     /// Returns an error message if the setup failed.
-    fn setup(&mut self) -> Result<(), Box<dyn Error>>;
+    ///
+    /// # Arguments
+    ///* `w` - The width of the rendering buffer
+    ///* `h` - The height of the rendering buffer
+    fn setup(&mut self, width: u32, height: u32) -> Result<(), Box<dyn Error>>;
 
     /// Callback if the event loop quit
     fn stop(&mut self);

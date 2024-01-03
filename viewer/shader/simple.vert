@@ -1,10 +1,24 @@
     #version 330 core
 
-layout(location = 0) in vec2 in_position;
+//------------------------------------------
+// INPUTS
+//------------------------------------------
 
-out vec2 texCoord;
+layout(location = 0) in vec3 in_position;
+
+//------------------------------------------
+// UNIFORMS
+//------------------------------------------
+
+uniform mat4 uniform_combined_mat;
+
+//------------------------------------------
+// OUTPUT
+//------------------------------------------
+
+out vec3 var_pos;
 
 void main() {
-    texCoord = in_position;
-    gl_Position = vec4(in_position * 2.0 - vec2(1.0, 1.0), 0.0, 1.0);
+    var_pos = in_position;
+    gl_Position = uniform_combined_mat * vec4(in_position, 1.0);
 }

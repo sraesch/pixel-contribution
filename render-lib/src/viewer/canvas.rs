@@ -16,8 +16,8 @@ use glutin::{
 use glutin_winit::{DisplayBuilder, GlWindow};
 use log::{debug, error, info};
 use winit::{
-    dpi::LogicalSize,
-    event::{Event, WindowEvent},
+    dpi::{LogicalPosition, LogicalSize},
+    event::{ElementState, Event, MouseButton, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
@@ -112,8 +112,11 @@ where
 
     let mut state = None;
     let mut is_initialized = false;
+    let mut cursor_pos = [0.0, 0.0];
     event_loop
         .run(move |event, window_target| {
+            let scale_factor = window.as_ref().map(|w| w.scale_factor()).unwrap_or(1.0);
+
             match event {
                 Event::Resumed => {
                     #[cfg(android_platform)]
@@ -146,7 +149,7 @@ where
                     if !is_initialized {
                         init_gl(&gl_display);
 
-                        if let Err(err) = handler.setup() {
+                        if let Err(err) = handler.setup(options.width, options.height) {
                             error!("Error during setup: {}", err);
                         }
 
@@ -191,6 +194,25 @@ where
                                 handler.resize(size.width, size.height);
                             }
                         }
+                    }
+                    WindowEvent::CursorMoved { position, .. } => {
+                        let logical_position =
+                            LogicalPosition::from_physical(position, scale_factor);
+
+                        cursor_pos = [logical_position.x, logical_position.y];
+                        handler.cursor_move(logical_position.x, logical_position.y);
+                    }
+                    WindowEvent::MouseInput { state, button, .. } => {
+                        let x = cursor_pos[0];
+                        let y = cursor_pos[1];
+
+                        let pressed: bool = state == ElementState::Pressed;
+
+                        handler.mouse_button(x, y, button, pressed);
+                    }
+                    WindowEvent::KeyboardInput { event, .. } => {
+                        let pressed = event.state == ElementState::Pressed;
+                        handler.keyboard_event(event.logical_key, pressed);
                     }
                     WindowEvent::CloseRequested => window_target.exit(),
                     _ => (),
