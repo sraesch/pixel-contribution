@@ -45,9 +45,19 @@ impl EventHandler for ViewerImpl {
         self.sphere.setup(self.options.image_file.as_path())?;
 
         self.cad_model = match CADModel::new(&self.options.model_file) {
-            Ok(cad_model) => Some(cad_model),
+            Ok(cad_model) => {
+                // TODO: compute bounding sphere for the CAD model
+                self.camera
+                    .focus(&BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 2.0)))
+                    .unwrap();
+                Some(cad_model)
+            }
             Err(err) => {
                 error!("Failed to load CAD model: {}", err);
+                self.camera
+                    .focus(&BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 2.0)))
+                    .unwrap();
+
                 None
             }
         };
@@ -55,10 +65,6 @@ impl EventHandler for ViewerImpl {
         FrameBuffer::depthtest(true);
 
         self.camera.update_window_size(width, height);
-        self.camera
-            .focus(&BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 2.0)))
-            .unwrap();
-
         info!("setup...DONE");
 
         Ok(())
@@ -72,9 +78,16 @@ impl EventHandler for ViewerImpl {
         trace!("debug frame");
         FrameBuffer::clear_buffers(&Vec4::new(0.0, 0.1, 0.2, 1.0));
 
-        let combined_mat = self.camera.get_data().get_combined_matrix();
+        let model_view_mat = self.camera.get_data().get_model_matrix();
+        let proj_mat = self.camera.get_data().get_projection_matrix();
 
-        self.sphere.render(&combined_mat);
+        if let Some(cad_model) = &self.cad_model {
+            cad_model.render(&model_view_mat, &proj_mat);
+        }
+
+        // let combined_mat = self.camera.get_data().get_combined_matrix();
+
+        // self.sphere.render(&combined_mat);
     }
 
     fn resize(&mut self, w: u32, h: u32) {

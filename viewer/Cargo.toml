@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 rasterizer = { path = "../rasterizer" }
 render-lib = { path = "../render-lib" }
+math = { path = "../math" }
 cad_import = "0.3.1"
 log = "0.4"
 anyhow = "1.0"

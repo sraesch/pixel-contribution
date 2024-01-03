@@ -7,6 +7,7 @@ use cad_import::{
     ID,
 };
 use nalgebra_glm::{identity, Mat4, Vec3};
+use rasterizer::BoundingSphere;
 use render_lib::{Attribute, AttributeBlock, DataType, DrawCall, GPUBuffer, GPUBufferType, Shader};
 
 /// A CAD model that can be rendered.
@@ -55,6 +56,26 @@ impl CADModel {
             uniform_combined_mat,
             uniform_model_view_mat,
         })
+    }
+
+    /// Renders the whole CAD model.
+    ///
+    /// # Arguments
+    /// * `model_view_mat` - The model view matrix.
+    /// * `proj_mat` - The projection matrix.
+    pub fn render(&self, model_view_mat: &Mat4, proj_mat: &Mat4) {
+        let combined_mat = proj_mat * model_view_mat;
+
+        self.shader.bind();
+
+        self.uniform_combined_mat.set_matrix4(&combined_mat);
+
+        self.instances.iter().for_each(|instance| {
+            let m = model_view_mat * instance.transform;
+            self.uniform_model_view_mat.set_matrix4(&m);
+
+            self.gpu_meshes[instance.gpu_mesh].render();
+        });
     }
 
     /// Tries to load the cad data from the given path
@@ -211,7 +232,7 @@ fn create_gpu_meshes_and_instances(
 
     // traverse the children
     node.get_children().iter().for_each(|child| {
-        create_gpu_meshes_and_instances(child, shape_map, gpu_meshes, instances, transform)
+        create_gpu_meshes_and_instances(child, shape_map, gpu_meshes, instances, transform);
     });
 }
 
