@@ -10,11 +10,13 @@ use options::Options;
 use anyhow::Result;
 use render_lib::{
     create_and_run_canvas, Attribute, AttributeBlock, Bind, CanvasOptions, DataType, DrawCall,
-    EventHandler, Filtering, FrameBuffer, GPUBuffer, GPUBufferType, Key, MouseButton, PixelFormat,
-    PrimitiveType, Shader, Texture, TextureData, TextureDescriptor, Uniform,
+    EventHandler, Filtering, FrameBuffer, GPUBuffer, GPUBufferType, Key, MouseButton,
+    PrimitiveType, Shader, Texture, Uniform,
 };
 
 struct ViewerImpl {
+    options: Options,
+
     texture: Texture,
 
     shader: Shader,
@@ -25,56 +27,16 @@ struct ViewerImpl {
     draw_call: DrawCall,
 }
 
-impl Default for ViewerImpl {
-    fn default() -> Self {
+impl ViewerImpl {
+    pub fn new(options: Options) -> Self {
         Self {
+            options,
             texture: Default::default(),
             shader: Default::default(),
             uniform_texture: Default::default(),
             positions: GPUBuffer::new(GPUBufferType::Vertices),
             draw_call: Default::default(),
         }
-    }
-}
-
-impl ViewerImpl {
-    /// Creates a texture with black and white pixels.
-    fn create_texture() -> Texture {
-        info!("Create texture...");
-
-        // create RGB-pixels of black and white pixels
-        let mut pixels = vec![0u8; 256 * 256 * 3];
-        for y in 0..256 {
-            for x in 0..256 {
-                if (x + y) % 2 == 0 {
-                    pixels[(y * 256 + x) * 3] = 0;
-                    pixels[(y * 256 + x) * 3 + 1] = 0;
-                    pixels[(y * 256 + x) * 3 + 2] = 0;
-                } else {
-                    pixels[(y * 256 + x) * 3] = 255;
-                    pixels[(y * 256 + x) * 3 + 1] = 255;
-                    pixels[(y * 256 + x) * 3 + 2] = 255;
-                }
-            }
-        }
-
-        let texture_data = TextureData {
-            data: Some(pixels.as_ref()),
-            descriptor: TextureDescriptor {
-                width: 256,
-                height: 256,
-                format: PixelFormat::Rgb,
-                datatype: DataType::UnsignedByte,
-                filtering: Filtering::Linear,
-            },
-        };
-
-        let mut texture = Texture::default();
-        texture.generate(&texture_data);
-
-        info!("Create texture...DONE");
-
-        texture
     }
 }
 
@@ -91,7 +53,8 @@ impl EventHandler for ViewerImpl {
         info!("compile shader...DONE");
 
         // initialize texture
-        self.texture = Self::create_texture();
+        self.texture
+            .generate_from_image(&self.options.image_file, Filtering::Linear)?;
 
         // initializes quad geometry
         let positions: [f32; 8] = [1f32, 0f32, 0f32, 0f32, 1f32, 1f32, 0f32, 1f32];
@@ -169,7 +132,7 @@ fn run_program() -> Result<()> {
 
     options.dump_to_log();
 
-    let viewer = ViewerImpl::default();
+    let viewer = ViewerImpl::new(options);
     create_and_run_canvas(
         CanvasOptions {
             title: "Viewer".to_string(),

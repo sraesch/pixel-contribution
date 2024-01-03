@@ -1,3 +1,4 @@
+use image::ImageError;
 use quick_error::quick_error;
 use std::io;
 
@@ -33,6 +34,12 @@ quick_error! {
 
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Self {
+        Error::IO(format!("{}", error))
+    }
+}
+
+impl From<ImageError> for Error {
+    fn from(error: ImageError) -> Self {
         Error::IO(format!("{}", error))
     }
 }

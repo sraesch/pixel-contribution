@@ -171,7 +171,7 @@ fn count_number_of_filled_pixel<R: Renderer>(
 ) -> u32 {
     let mut histogram = Histogram::new();
     let r = renderer.render_frame(
-        &geo,
+        geo,
         &mut histogram,
         None,
         view.view_matrix,

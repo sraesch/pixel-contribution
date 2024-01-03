@@ -1,5 +1,8 @@
 use gl::types::*;
-use std::io::{BufWriter, Write};
+use std::{
+    io::{BufWriter, Write},
+    path::Path,
+};
 
 use crate::{Bind, DataType, Error, Resource, Result};
 
@@ -85,6 +88,60 @@ pub struct Texture {
 }
 
 impl Texture {
+    /// Generates a texture from an image file.
+    ///
+    /// # Arguments
+    /// * `filename` - The path to the image file.
+    /// * `filtering` - The filtering to use for the texture.
+    pub fn generate_from_image<P: AsRef<Path>>(
+        &mut self,
+        filename: P,
+        filtering: Filtering,
+    ) -> Result<()> {
+        let img = image::open(filename)?;
+
+        let is_alpha = img.color().has_alpha();
+
+        let format = if is_alpha {
+            PixelFormat::Rgba
+        } else {
+            PixelFormat::Rgb
+        };
+
+        let width = img.width();
+        let height = img.height();
+
+        let data = if is_alpha {
+            // get image data as rgba and return an error if the image is not in rgba format
+            img.as_rgba8().ok_or_else(|| {
+                Error::IO("Image is not in rgba format and cannot be converted".to_string())
+            })?;
+
+            img.as_bytes()
+        } else {
+            img.as_rgb8().ok_or_else(|| {
+                Error::IO("Image is not in rgb format and cannot be converted".to_string())
+            })?;
+
+            img.as_bytes()
+        };
+
+        let texture_data = TextureData {
+            data: Some(data),
+            descriptor: TextureDescriptor {
+                width,
+                height,
+                format,
+                filtering,
+                datatype: DataType::UnsignedByte,
+            },
+        };
+
+        self.generate(&texture_data);
+
+        Ok(())
+    }
+
     /// Generates the texture data
     ///
     ///* `data` - The new texture data
