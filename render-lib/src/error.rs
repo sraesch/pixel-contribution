@@ -22,6 +22,9 @@ quick_error! {
         FrameBuffer(err: std::string::String) {
             display("{}", err)
         }
+        DrawCall(err: std::string::String) {
+            display("{}", err)
+        }
         InvalidArgument(err: String) {
             display("{}", err)
         }
