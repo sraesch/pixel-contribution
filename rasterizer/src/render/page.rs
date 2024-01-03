@@ -1,7 +1,6 @@
-use crate::{
-    math::Aabb,
-    scene::{CompressedPositions, Triangle},
-};
+use math::Aabb;
+
+use crate::scene::{CompressedPositions, Triangle};
 
 /// The object-id map maps local 8-bit object ids to global 32-bit object ids.
 pub type ObjectIdMap = [u32; 256];

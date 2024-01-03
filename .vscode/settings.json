@@ -13,6 +13,7 @@
         "rasterizer",
         "rasterizes",
         "renderbuffer",
-        "repr"
+        "repr",
+        "winit"
     ]
 }

@@ -26,6 +26,9 @@ quick_error! {
         DrawCall(err: std::string::String) {
             display("{}", err)
         }
+        Camera(err: std::string::String) {
+            display("{}", err)
+        }
         InvalidArgument(err: String) {
             display("{}", err)
         }

@@ -1,6 +1,5 @@
 use nalgebra_glm::{Mat4, Vec3};
-
-use crate::Sphere;
+use rasterizer::BoundingSphere;
 
 /// A camera view defined by its view and projection matrix.
 pub struct View {
@@ -28,7 +27,7 @@ impl View {
     /// * `fovy` - The field of view in y-direction in radians.
     /// * `dir` - The direction of the camera, i.e, the directional vector which points toward the
     ///           object.
-    pub fn new_from_sphere(sphere: &Sphere, fovy: f32, dir: Vec3) -> Self {
+    pub fn new_from_sphere(sphere: &BoundingSphere, fovy: f32, dir: Vec3) -> Self {
         assert!(
             fovy > 0f32 && fovy < std::f32::consts::PI,
             "fovy must be in (0, PI)"

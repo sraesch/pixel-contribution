@@ -1,6 +1,5 @@
+use math::Aabb;
 use nalgebra_glm::Vec3;
-
-use crate::math::Aabb;
 
 use super::{IntegerTrait, Vec3Quantifier, Vec3QuantifierDesc};
 

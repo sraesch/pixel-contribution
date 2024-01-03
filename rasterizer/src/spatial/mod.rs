@@ -1,9 +1,9 @@
 use std::{collections::HashMap, ops::Range};
 
+use math::{transform_vec3, Aabb};
 use nalgebra_glm::{Mat4, Vec3};
 
 use crate::{
-    math::{transform_vec3, Aabb},
     render::{ObjectIdMap, Page},
     scene::{CompressedPositions, Geometry, NumBits, Triangle},
 };

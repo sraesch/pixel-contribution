@@ -1,11 +1,9 @@
 mod error;
 pub mod octahedron;
 mod progress;
-mod sphere;
 mod view;
 
 pub use error::*;
-pub use sphere::*;
 use thread_local::ThreadLocal;
 pub use view::*;
 
@@ -85,7 +83,7 @@ where
     );
 
     let geo = R::G::new(scene, stats.get_child("render_geo"));
-    let bounding_sphere = compute_bounding_sphere(scene);
+    let bounding_sphere = scene.compute_bounding_sphere();
     info!(
         "Bounding sphere: Center={}, Radius={}",
         bounding_sphere.center, bounding_sphere.radius
@@ -235,14 +233,4 @@ impl PixelContribution {
 
         Ok(())
     }
-}
-
-/// Computes the bounding sphere of the given scene.
-///
-/// # Arguments
-/// * `scene` - The scene for which the bounding sphere should be computed.
-fn compute_bounding_sphere(scene: &Scene) -> Sphere {
-    let sphere = scene.compute_bounding_sphere();
-
-    Sphere::from(sphere)
 }

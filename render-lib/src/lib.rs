@@ -1,5 +1,6 @@
 #[macro_use]
 pub mod gl_call;
+pub mod camera;
 
 mod datatype;
 mod draw;

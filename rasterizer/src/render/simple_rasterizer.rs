@@ -1,8 +1,8 @@
 use log::info;
+use math::transform_vec3;
 use nalgebra_glm::{Mat4, Vec3};
 
 use crate::{
-    math::transform_vec3,
     scene::{CompressedPositions, CompressedPositionsRaw, IntegerTrait, Scene},
     spatial::simple::compute_sorting,
     stats::StatsNode,
