@@ -97,13 +97,6 @@ where
     // query it from the config.
     let gl_display = gl_config.display();
 
-    info!("Load OpenGL function pointers...");
-    gl::load_with(|symbol| {
-        let symbol = CString::new(symbol).unwrap();
-        let symbol = symbol.as_c_str();
-        gl_display.get_proc_address(symbol) as *const _
-    });
-
     // The context creation part. It can be created before surface and that's how
     // it's expected in multithreaded + multiwindow operation mode, since you
     // can send NotCurrentContext, but not Surface.
@@ -151,18 +144,7 @@ where
                     // buffers. It also performs function loading, which needs a current context on
                     // WGL.
                     if !is_initialized {
-                        let s = unsafe { CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8) }
-                            .to_str()
-                            .expect("Failed to get vendor string");
-                        info!("Vendor: {}", s);
-                        let s = unsafe { CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8) }
-                            .to_str()
-                            .expect("Failed to get renderer string");
-                        info!("Renderer: {}", s);
-                        let s = unsafe { CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8) }
-                            .to_str()
-                            .expect("Failed to get version string");
-                        info!("Version: {}", s);
+                        init_gl(&gl_display);
 
                         if let Err(err) = handler.setup() {
                             error!("Error during setup: {}", err);
@@ -229,95 +211,30 @@ where
     Ok(())
 }
 
-// pub fn create_and_run_canvas<H>(options: CanvasOptions, mut handler: H) -> Result<()>
-// where
-//     H: EventHandler,
-// {
-//     info!("Creating canvas...");
+/// Initialize OpenGL function pointers.
+fn init_gl<D: GlDisplay>(gl_display: &D) {
+    info!("Load OpenGL function pointers...");
+    gl::load_with(|symbol| {
+        let symbol_cstr = CString::new(symbol).unwrap();
+        let symbol_cstr = symbol_cstr.as_c_str();
+        let addr = gl_display.get_proc_address(symbol_cstr) as *const _;
 
-//     let event_loop = EventLoop::new().map_err(|e| Error::GraphicsAPI(format!("{}", e)))?;
-//     // ControlFlow::Poll continuously runs the event loop, even if the OS hasn't
-//     // dispatched any events. This is ideal for games and similar applications.
-//     event_loop.set_control_flow(ControlFlow::Poll);
+        debug!("GL Function {} = {:?}", symbol, addr);
 
-//     debug!("Create window builder...");
-//     let window_builder = WindowBuilder::new()
-//         .with_title(options.title)
-//         .with_inner_size(LogicalSize::new(options.width, options.height));
+        addr
+    });
+    info!("Load OpenGL function pointers...DONE");
 
-//     // The template will match only the configurations supporting rendering
-//     // to windows.
-//     let template = ConfigTemplateBuilder::new().with_alpha_size(8);
-
-//     let display_builder = DisplayBuilder::new().with_window_builder(Some(window_builder));
-
-//     let (mut window, gl_config) = display_builder
-//         .build(&event_loop, template, |configs| {
-//             // Find the config with the maximum number of samples, so our triangle will
-//             // be smooth.
-//             configs
-//                 .reduce(|accum, config| {
-//                     let transparency_check = config.supports_transparency().unwrap_or(false)
-//                         & !accum.supports_transparency().unwrap_or(false);
-
-//                     if transparency_check || config.num_samples() > accum.num_samples() {
-//                         config
-//                     } else {
-//                         accum
-//                     }
-//                 })
-//                 .unwrap()
-//         })
-//         .map_err(|e| Error::GraphicsAPI(format!("{}", e)))?;
-
-//     info!(
-//         "Choose the following display configuration: {:?}",
-//         gl_config
-//     );
-
-//     // call setup function of the event handler
-//     if let Err(e) = handler.setup() {
-//         error!("Error during setup: {}", e);
-//         return Err(Error::Internal(
-//             "Stopped due to error in setup:".to_string(),
-//         ));
-//     }
-
-//     event_loop
-//         .run(move |event, elwt| {
-//             match event {
-//                 Event::WindowEvent {
-//                     event: WindowEvent::CloseRequested,
-//                     ..
-//                 } => {
-//                     info!("The close button was pressed; stopping");
-//                     handler.stop();
-//                     elwt.exit();
-//                 }
-//                 Event::AboutToWait => {
-//                     // Application update code.
-
-//                     // Queue a RedrawRequested event.
-//                     //
-//                     // You only need to call this if you've determined that you need to redraw in
-//                     // applications which do not always need to. Applications that redraw continuously
-//                     // can render here instead.
-//                     window.request_redraw();
-//                 }
-//                 Event::WindowEvent {
-//                     event: WindowEvent::RedrawRequested,
-//                     ..
-//                 } => {
-//                     // Redraw the application.
-//                     //
-//                     // It's preferable for applications that do not render continuously to render in
-//                     // this event rather than in AboutToWait, since rendering in here allows
-//                     // the program to gracefully handle redraws requested by the OS.
-//                 }
-//                 _ => (),
-//             }
-//         })
-//         .map_err(|e| Error::GraphicsAPI(format!("{}", e)))?;
-
-//     Ok(())
-// }
+    let s = unsafe { CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8) }
+        .to_str()
+        .expect("Failed to get vendor string");
+    info!("Vendor: {}", s);
+    let s = unsafe { CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8) }
+        .to_str()
+        .expect("Failed to get renderer string");
+    info!("Renderer: {}", s);
+    let s = unsafe { CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8) }
+        .to_str()
+        .expect("Failed to get version string");
+    info!("Version: {}", s);
+}
