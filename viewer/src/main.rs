@@ -1,7 +1,8 @@
 mod geometry;
 mod options;
+mod sphere;
 
-use std::{error::Error, mem::size_of};
+use std::error::Error;
 
 use clap::Parser;
 use log::{debug, error, info, trace, LevelFilter};
@@ -11,28 +12,16 @@ use options::Options;
 use anyhow::Result;
 use rasterizer::BoundingSphere;
 use render_lib::{
-    camera::Camera, create_and_run_canvas, Attribute, AttributeBlock, Bind, CanvasOptions,
-    DataType, DrawCall, EventHandler, Filtering, FrameBuffer, GPUBuffer, GPUBufferType, IndexData,
-    Key, MouseButton, PrimitiveType, Shader, Texture, Uniform,
+    camera::Camera, create_and_run_canvas, CanvasOptions, EventHandler, FrameBuffer, Key,
+    MouseButton,
 };
-
-use crate::geometry::create_sphere;
+use sphere::Sphere;
 
 struct ViewerImpl {
     options: Options,
     camera: Camera,
 
-    texture: Texture,
-
-    shader: Shader,
-
-    uniform_texture: Uniform,
-    uniform_combined_mat: Uniform,
-
-    positions: GPUBuffer,
-    indices: GPUBuffer,
-    num_indices: usize,
-    draw_call: DrawCall,
+    sphere: Sphere,
 }
 
 impl ViewerImpl {
@@ -40,14 +29,7 @@ impl ViewerImpl {
         Self {
             options,
             camera: Default::default(),
-            texture: Default::default(),
-            shader: Default::default(),
-            uniform_texture: Default::default(),
-            uniform_combined_mat: Default::default(),
-            positions: GPUBuffer::new(GPUBufferType::Vertices),
-            indices: GPUBuffer::new(GPUBufferType::Indices),
-            num_indices: 0,
-            draw_call: Default::default(),
+            sphere: Default::default(),
         }
     }
 }
@@ -56,37 +38,7 @@ impl EventHandler for ViewerImpl {
     fn setup(&mut self, width: u32, height: u32) -> Result<(), Box<dyn Error>> {
         info!("setup...");
 
-        let vert_shader = include_str!("../shader/simple.vert");
-        let frag_shader = include_str!("../shader/simple.frag");
-
-        info!("compile shader...");
-        self.shader.load(vert_shader, frag_shader)?;
-        self.uniform_texture = self.shader.get_uniform("uniform_texture").unwrap();
-        self.uniform_combined_mat = self.shader.get_uniform("uniform_combined_mat").unwrap();
-        info!("compile shader...DONE");
-
-        // initialize texture
-        self.texture
-            .generate_from_image(&self.options.image_file, Filtering::Linear)?;
-
-        // initializes quad geometry
-        let sphere_geo = create_sphere(1.0, 100, 100);
-        self.positions.set_data(&sphere_geo.0);
-        self.indices.set_data(&sphere_geo.1);
-        self.num_indices = sphere_geo.1.len();
-
-        // create vertex array
-        self.draw_call.set_data(&[AttributeBlock {
-            vertex_data: &self.positions,
-            attributes: vec![Attribute {
-                offset: 0,
-                stride: size_of::<f32>() * 3,
-                num_components: 3,
-                data_type: DataType::Float,
-                is_integer: false,
-                normalized: false,
-            }],
-        }]);
+        self.sphere.setup(self.options.image_file.as_path())?;
 
         FrameBuffer::depthtest(true);
 
@@ -109,20 +61,8 @@ impl EventHandler for ViewerImpl {
         FrameBuffer::clear_buffers(&Vec4::new(0.0, 0.1, 0.2, 1.0));
 
         let combined_mat = self.camera.get_data().get_combined_matrix();
-        self.uniform_combined_mat.set_matrix4(&combined_mat);
 
-        self.shader.bind();
-        self.texture.bind();
-        self.uniform_texture.set_int(0);
-        self.draw_call.draw_with_indices(
-            PrimitiveType::Triangles,
-            &self.indices,
-            &IndexData {
-                datatype: DataType::UnsignedInt,
-                offset: 0,
-                num: self.num_indices,
-            },
-        );
+        self.sphere.render(&combined_mat);
     }
 
     fn resize(&mut self, w: u32, h: u32) {

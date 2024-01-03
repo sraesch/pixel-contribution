@@ -1,5 +1,3 @@
-use core::num;
-
 use nalgebra_glm::Vec3;
 
 /// Creates a sphere with the given radius and number of segments.

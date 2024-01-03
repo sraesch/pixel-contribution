@@ -17,7 +17,7 @@ use glutin_winit::{DisplayBuilder, GlWindow};
 use log::{debug, error, info};
 use winit::{
     dpi::{LogicalPosition, LogicalSize},
-    event::{ElementState, Event, MouseButton, WindowEvent},
+    event::{ElementState, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
@@ -98,7 +98,7 @@ where
     let gl_display = gl_config.display();
 
     // The context creation part. It can be created before surface and that's how
-    // it's expected in multithreaded + multiwindow operation mode, since you
+    // it's expected in multithreaded + multi-window operation mode, since you
     // can send NotCurrentContext, but not Surface.
     let context_attributes = ContextAttributesBuilder::new()
         .with_context_api(ContextApi::OpenGl(Some(Version::new(4, 0))))
