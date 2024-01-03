@@ -26,6 +26,29 @@
                 "32"
             ],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'viewer'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=viewer",
+                    "--package=viewer"
+                ],
+                "filter": {
+                    "name": "viewer",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-i",
+                "${workspaceFolder}/test_data/images/plane_contrib_map.png",
+                "-m",
+                "foobar"
+            ],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
