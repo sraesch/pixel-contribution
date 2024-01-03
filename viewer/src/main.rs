@@ -1,9 +1,11 @@
+mod cad_model;
 mod geometry;
 mod options;
 mod sphere;
 
 use std::error::Error;
 
+use cad_model::CADModel;
 use clap::Parser;
 use log::{debug, error, info, trace, LevelFilter};
 use nalgebra_glm::{Vec3, Vec4};
@@ -22,6 +24,7 @@ struct ViewerImpl {
     camera: Camera,
 
     sphere: Sphere,
+    cad_model: Option<CADModel>,
 }
 
 impl ViewerImpl {
@@ -30,6 +33,7 @@ impl ViewerImpl {
             options,
             camera: Default::default(),
             sphere: Default::default(),
+            cad_model: None,
         }
     }
 }
@@ -39,6 +43,7 @@ impl EventHandler for ViewerImpl {
         info!("setup...");
 
         self.sphere.setup(self.options.image_file.as_path())?;
+        self.cad_model = Some(CADModel::new(&self.options.model_file)?);
 
         FrameBuffer::depthtest(true);
 
