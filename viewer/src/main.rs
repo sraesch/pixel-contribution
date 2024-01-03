@@ -43,7 +43,14 @@ impl EventHandler for ViewerImpl {
         info!("setup...");
 
         self.sphere.setup(self.options.image_file.as_path())?;
-        self.cad_model = Some(CADModel::new(&self.options.model_file)?);
+
+        self.cad_model = match CADModel::new(&self.options.model_file) {
+            Ok(cad_model) => Some(cad_model),
+            Err(err) => {
+                error!("Failed to load CAD model: {}", err);
+                None
+            }
+        };
 
         FrameBuffer::depthtest(true);
 

@@ -46,7 +46,7 @@
                 "-i",
                 "${workspaceFolder}/test_data/images/plane_contrib_map.png",
                 "-m",
-                "foobar"
+                "${workspaceFolder}/test_data/models/plane.glb"
             ],
             "cwd": "${workspaceFolder}"
         }

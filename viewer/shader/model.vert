@@ -11,7 +11,7 @@ layout(location = 0) in vec3 in_position;
 //------------------------------------------
 
 uniform mat4 uniform_combined_mat;
-uniform mat4 model_view_mat;
+uniform mat4 uniform_model_view_mat;
 
 //------------------------------------------
 // OUTPUT
@@ -20,6 +20,6 @@ uniform mat4 model_view_mat;
 out vec3 var_pos;
 
 void main() {
-    var_pos = vec3(model_view_mat * vec4(in_position, 1.0));
+    var_pos = vec3(uniform_model_view_mat * vec4(in_position, 1.0));
     gl_Position = uniform_combined_mat * vec4(in_position, 1.0);
 }

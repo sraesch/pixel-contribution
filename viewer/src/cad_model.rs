@@ -45,8 +45,8 @@ impl CADModel {
             include_str!("../shader/model.frag"),
         )?;
 
-        let uniform_combined_mat = shader.get_uniform("combined_mat")?;
-        let uniform_model_view_mat = shader.get_uniform("model_view_mat")?;
+        let uniform_combined_mat = shader.get_uniform("uniform_combined_mat")?;
+        let uniform_model_view_mat = shader.get_uniform("uniform_model_view_mat")?;
 
         Ok(Self {
             gpu_meshes,
