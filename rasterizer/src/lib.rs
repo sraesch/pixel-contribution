@@ -1,5 +1,4 @@
 mod error;
-mod math;
 mod render;
 mod scene;
 mod spatial;

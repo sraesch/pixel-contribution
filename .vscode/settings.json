@@ -7,8 +7,14 @@
         "dequantize",
         "Dequantizes",
         "fovy",
+        "glutin",
+        "Lsizei",
+        "Lsizeiptr",
         "nalgebra",
         "rasterizer",
-        "rasterizes"
+        "rasterizes",
+        "renderbuffer",
+        "repr",
+        "winit"
     ]
 }

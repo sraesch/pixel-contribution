@@ -1,5 +1,5 @@
 [package]
-name = "rasterizer"
+name = "render-lib"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,15 +7,13 @@ edition = "2021"
 
 [dependencies]
 math = { path = "../math" }
+gl = "0.14"
 log = "0.4"
-nalgebra-glm = "0.18"
-cad_import = "0.3.1"
-lazy_static = "1.4"
-num = "0.4"
-byte-slice-cast = "1.2"
+glutin = "0.31"
+winit = "0.29"
+glutin-winit = "0.4"
+raw-window-handle = "0.5"
 quick-error = "2.0"
+nalgebra-glm = "0.18"
+static_assertions = "1.1"
 image = "0.24"
-rand = "0.8"
-rand_chacha = "0.3"
-
-[dev-dependencies]

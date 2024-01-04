@@ -3,6 +3,7 @@ mod geometry;
 
 pub use compressed::*;
 pub use geometry::*;
+use math::{transform_vec3, Aabb, BoundingSphere};
 
 use std::{collections::HashMap, path::Path};
 
@@ -15,10 +16,7 @@ use cad_import::{
 use log::{info, warn};
 use nalgebra_glm::{Mat4, Vec3};
 
-use crate::{
-    math::{transform_vec3, Aabb},
-    Error, Result,
-};
+use crate::{Error, Result};
 
 /// A single instantiated geometry
 #[derive(Clone)]
@@ -101,7 +99,7 @@ impl Scene {
     /// Computes and returns an approximated bounding sphere for the given scene.
     /// It is approximated by computing the AABB and then determining the furthest point
     /// from the center of the AABB. It returns the center and the radius of the sphere.
-    pub fn compute_bounding_sphere(&self) -> (Vec3, f32) {
+    pub fn compute_bounding_sphere(&self) -> BoundingSphere {
         let aabb = self.compute_aabb();
 
         let center = aabb.get_center();
@@ -122,7 +120,7 @@ impl Scene {
             value.max(d)
         });
 
-        (center, radius.sqrt())
+        BoundingSphere::from((center, radius.sqrt()))
     }
 
     /// Prints statistics about the loaded scene.

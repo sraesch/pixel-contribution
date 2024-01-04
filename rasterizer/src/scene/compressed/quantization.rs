@@ -1,7 +1,6 @@
+use math::Aabb;
 use nalgebra_glm::{Mat4, U16Vec3, Vec3, Vec4};
 use std::{marker::PhantomData, mem::size_of};
-
-use crate::math::Aabb;
 
 use super::IntegerTrait;
 

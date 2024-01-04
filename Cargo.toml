@@ -1,7 +1,14 @@
 [workspace]
 resolver = "2"
 
-members = ["rasterizer", "pixel-contrib", "pixel-contrib-cli"]
+members = [
+    "math",
+    "rasterizer",
+    "pixel-contrib",
+    "pixel-contrib-cli",
+    "render-lib",
+    "viewer",
+]
 
 [profile.release-with-debug]
 inherits = "release"

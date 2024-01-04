@@ -69,6 +69,9 @@ impl Aabb {
     }
 
     /// Extends the bounding volume from the given iterator of vec3 positions.
+    ///
+    /// # Arguments
+    /// * `positions` - The positions about which the volume is extended.
     pub fn extend_iter<I>(&mut self, positions: I)
     where
         I: Iterator<Item = glm::Vec3>,
@@ -168,6 +171,16 @@ impl Default for Aabb {
     #[inline]
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl FromIterator<glm::Vec3> for Aabb {
+    fn from_iter<I: IntoIterator<Item = glm::Vec3>>(iter: I) -> Self {
+        let mut result = Aabb::new();
+
+        result.extend_iter(iter.into_iter());
+
+        result
     }
 }
 
