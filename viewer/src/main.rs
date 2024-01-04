@@ -135,10 +135,14 @@ impl EventHandler for ViewerImpl {
         if let Key::Character(c) = key {
             match c.as_str() {
                 "w" => {
-                    self.sphere_transparency = (self.sphere_transparency + 0.1).min(1.0);
+                    if pressed {
+                        self.sphere_transparency = (self.sphere_transparency + 0.1).min(1.0);
+                    }
                 }
                 "s" => {
-                    self.sphere_transparency = (self.sphere_transparency - 0.1).max(0.0);
+                    if pressed {
+                        self.sphere_transparency = (self.sphere_transparency - 0.1).max(0.0);
+                    }
                 }
                 _ => {}
             }
