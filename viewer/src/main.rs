@@ -161,7 +161,7 @@ fn parse_args() -> Result<Options> {
 /// # Arguments
 /// * `filter` - The log level filter.
 fn initialize_logging(filter: LevelFilter) {
-    simple_logging::log_to(std::io::stdout(), filter);
+    env_logger::builder().filter_level(filter).init();
 }
 
 /// Runs the viewer program.
