@@ -31,16 +31,54 @@ impl CADModel {
     pub fn new(filename: &Path) -> Result<Self> {
         let cad_data = Self::load_cad_data(filename)?;
 
-        // determine the bounding sphere for the model
+        // Determine the AABB bounding volume of the CAD model. Will be used to compute the center
+        // of the bounding sphere.
         let mut bounding_volume = Aabb::default();
-        compute_aabb(cad_data.get_root_node(), &mut bounding_volume, identity());
-
-        let mut bounding_sphere_radius = 0f32;
-        compute_bounding_sphere_radius(
+        traverse(
             cad_data.get_root_node(),
-            &bounding_volume.get_center(),
-            &mut bounding_sphere_radius,
             identity(),
+            &mut update_node_transform,
+            &mut bounding_volume,
+            &mut |node, bounding_volume, transform| {
+                node.get_shapes().iter().for_each(|shape| {
+                    shape.get_parts().iter().for_each(|part| {
+                        let mesh = part.get_mesh();
+                        let mesh_vertices = mesh.get_vertices();
+
+                        // extend the bounding volume by all vertices of the current shape
+                        bounding_volume.extend_iter(
+                            mesh_vertices
+                                .get_positions()
+                                .iter()
+                                .map(|pos| transform_vec3(transform, &pos.0)),
+                        );
+                    });
+                });
+            },
+        );
+
+        // Determine the radius of the bounding sphere
+        let mut bounding_sphere_radius = 0f32;
+        let center = bounding_volume.get_center();
+        traverse(
+            cad_data.get_root_node(),
+            identity(),
+            &mut update_node_transform,
+            &mut bounding_sphere_radius,
+            &mut |node, radius, transform| {
+                node.get_shapes().iter().for_each(|shape| {
+                    shape.get_parts().iter().for_each(|part| {
+                        let mesh = part.get_mesh();
+                        let mesh_vertices = mesh.get_vertices();
+
+                        // update the radius based on the vertices of the current shape
+                        mesh_vertices.get_positions().iter().for_each(|pos| {
+                            *radius =
+                                radius.max(distance2(&transform_vec3(transform, &pos.0), &center))
+                        });
+                    });
+                });
+            },
         );
 
         bounding_sphere_radius = bounding_sphere_radius.sqrt();
@@ -49,15 +87,43 @@ impl CADModel {
             BoundingSphere::from((bounding_volume.get_center(), bounding_sphere_radius));
 
         // create the shape map and the gpu meshes from the loaded cad data
-        let mut instances = Vec::new();
-        let mut gpu_meshes = Vec::new();
-        create_gpu_meshes_and_instances(
+        let mut global_context: (Vec<GPUMeshInstance>, Vec<GPUMesh>, HashMap<ID, usize>) =
+            Default::default();
+        traverse(
             cad_data.get_root_node(),
-            &mut HashMap::new(),
-            &mut gpu_meshes,
-            &mut instances,
             identity(),
+            &mut update_node_transform,
+            &mut global_context,
+            &mut |node, global_context, transform| {
+                node.get_shapes().iter().for_each(|shape| {
+                    let id = shape.get_id();
+
+                    let instances = &mut global_context.0;
+                    let gpu_meshes = &mut global_context.1;
+                    let shape_map = &mut global_context.2;
+
+                    // Get the corresponding gpu mesh index.
+                    // Create the gpu mesh for the shape and register it in the shape map if it does not exist
+                    // yet
+                    let gpu_mesh_index = *shape_map.entry(id).or_insert_with(|| {
+                        let new_index = gpu_meshes.len();
+                        let (vertices, indices) = accumulate_mesh_data(shape);
+                        let gpu_mesh = GPUMesh::new(&vertices, &indices);
+                        gpu_meshes.push(gpu_mesh);
+
+                        new_index
+                    });
+
+                    // create the instance
+                    instances.push(GPUMeshInstance {
+                        transform: *transform,
+                        gpu_mesh: gpu_mesh_index,
+                    });
+                });
+            },
         );
+
+        let (instances, gpu_meshes, _) = global_context;
 
         // create the shader
         let mut shader = Shader::default();
@@ -212,7 +278,12 @@ impl GPUMesh {
     }
 }
 
-/// Traverses the given node and all its children to create all GPU meshes and instances.
+/// Traverses the given node and all its children.
+/// There are two different context objects that can be used to store data during the traversal.
+/// The first one is the `traversal_context`, which is only updated down the tree. This can be data
+/// like the current transformation matrix.
+/// The second one is the `global_context`, which is a global data like maps or other data
+/// structures.
 ///
 /// # Arguments
 /// * `node` - The node to traverse.
@@ -220,46 +291,42 @@ impl GPUMesh {
 /// * `gpu_meshes` - The gpu meshes that will be created.
 /// * `instances` - The instances that will be created.
 /// * `transform` - The transformation matrix of the parent node.
-fn create_gpu_meshes_and_instances(
+fn traverse<TraversalContext, UpdateTraversalContext, GlobalContext, UpdateGlobalContext>(
     node: &Node,
-    shape_map: &mut HashMap<ID, usize>,
-    gpu_meshes: &mut Vec<GPUMesh>,
-    instances: &mut Vec<GPUMeshInstance>,
-    transform: Mat4,
-) {
-    // update the transformation matrix
-    let transform = match node.get_transform() {
+    traversal_context: TraversalContext,
+    update_context: &mut UpdateTraversalContext,
+    global_context: &mut GlobalContext,
+    update_global_context: &mut UpdateGlobalContext,
+) where
+    UpdateTraversalContext: FnMut(&Node, TraversalContext) -> TraversalContext,
+    TraversalContext: Clone,
+    UpdateGlobalContext: FnMut(&Node, &mut GlobalContext, &TraversalContext),
+{
+    let traversal_context = update_context(node, traversal_context);
+
+    update_global_context(node, global_context, &traversal_context);
+
+    node.get_children().iter().for_each(|child| {
+        traverse(
+            child,
+            traversal_context.clone(),
+            update_context,
+            global_context,
+            update_global_context,
+        );
+    });
+}
+
+/// Updates the given transformation matrix with the transformation of the given node.
+///
+/// # Arguments
+/// * `node` - The node to update the transformation matrix with.
+/// * `transform` - The current transformation matrix.
+fn update_node_transform(node: &Node, transform: Mat4) -> Mat4 {
+    match node.get_transform() {
         Some(t) => transform * t,
         None => transform,
-    };
-
-    // create the gpu mesh for each shape
-    node.get_shapes().iter().for_each(|shape| {
-        let id = shape.get_id();
-
-        // Get the corresponding gpu mesh index.
-        // Create the gpu mesh for the shape and register it in the shape map if it does not exist
-        // yet
-        let gpu_mesh_index = *shape_map.entry(id).or_insert_with(|| {
-            let new_index = gpu_meshes.len();
-            let (vertices, indices) = accumulate_mesh_data(shape);
-            let gpu_mesh = GPUMesh::new(&vertices, &indices);
-            gpu_meshes.push(gpu_mesh);
-
-            new_index
-        });
-
-        // create the instance
-        instances.push(GPUMeshInstance {
-            transform,
-            gpu_mesh: gpu_mesh_index,
-        });
-    });
-
-    // traverse the children
-    node.get_children().iter().for_each(|child| {
-        create_gpu_meshes_and_instances(child, shape_map, gpu_meshes, instances, transform);
-    });
+    }
 }
 
 /// Accumulates the parts of the given shape into a single vertex and index buffer.
@@ -297,74 +364,4 @@ fn accumulate_mesh_data(shape: &Shape) -> (Vec<Vec3>, Vec<u32>) {
     });
 
     (vertices, indices)
-}
-
-/// Traverses the given node and all its children to compute the AABB bounding volume.
-///
-/// # Arguments
-/// * `node` - The node to traverse.
-/// * `bounding_volume` - The bounding volume to compute.
-/// * `transform` - The transformation matrix of the parent node.
-fn compute_aabb(node: &Node, bounding_volume: &mut Aabb, transform: Mat4) {
-    // update the transformation matrix
-    let transform = match node.get_transform() {
-        Some(t) => transform * t,
-        None => transform,
-    };
-
-    // iterate over all shapes and update the bounding volume
-    node.get_shapes().iter().for_each(|shape| {
-        shape.get_parts().iter().for_each(|part| {
-            let mesh = part.get_mesh();
-            let mesh_vertices = mesh.get_vertices();
-
-            // extend the bounding volume by all vertices of the current shape
-            bounding_volume.extend_iter(
-                mesh_vertices
-                    .get_positions()
-                    .iter()
-                    .map(|pos| transform_vec3(&transform, &pos.0)),
-            );
-        });
-    });
-
-    // traverse the children
-    node.get_children().iter().for_each(|child| {
-        compute_aabb(child, bounding_volume, transform);
-    });
-}
-
-/// Traverses the given node and all its children to compute the radius of the bounding sphere
-/// based on a provided sphere center.
-/// Note: The radius is the quadratic distance.
-///
-/// # Arguments
-/// * `node` - The node to traverse.
-/// * `center` - The center of the bounding sphere.
-/// * `radius` - The bounding volume to compute.
-/// * `transform` - The transformation matrix of the parent node.
-fn compute_bounding_sphere_radius(node: &Node, center: &Vec3, radius: &mut f32, transform: Mat4) {
-    // update the transformation matrix
-    let transform = match node.get_transform() {
-        Some(t) => transform * t,
-        None => transform,
-    };
-
-    // iterate over all shapes and update the bounding volume
-    node.get_shapes().iter().for_each(|shape| {
-        shape.get_parts().iter().for_each(|part| {
-            let mesh = part.get_mesh();
-            let mesh_vertices = mesh.get_vertices();
-
-            // update the radius based on the vertices of the current shape
-            mesh_vertices.get_positions().iter().for_each(|pos| {
-                *radius = radius.max(distance2(&transform_vec3(&transform, &pos.0), center))
-            });
-        });
-    });
-
-    // traverse the children
-    node.get_children().iter().for_each(|child| {
-        compute_bounding_sphere_radius(child, center, radius, transform);
-    });
 }
