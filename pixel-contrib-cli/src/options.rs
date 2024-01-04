@@ -63,6 +63,10 @@ pub struct Options {
     /// The color map for encoding the pixel contribution
     #[arg(short, value_enum, long, default_value_t = PixelContribColorMap::Rgb)]
     pub color_map: PixelContribColorMap,
+
+    /// The field of view for the camera in radians. 0 means orthographic camera.
+    #[arg(short = 'a', long, default_value_t = 90f32.to_radians())]
+    pub camera: f32,
 }
 
 impl Options {

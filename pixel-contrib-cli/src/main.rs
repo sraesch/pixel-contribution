@@ -59,11 +59,21 @@ fn execute_pixel_contribution_program(options: &Options, scene: &Scene) -> Resul
 
     let render_options = options.get_render_options();
 
+    let camera_config = if options.camera > 0f32 {
+        pixel_contrib::CameraConfig::Perspective {
+            fovy: options.camera,
+        }
+    } else {
+        pixel_contrib::CameraConfig::Orthographic
+    };
+
+    info!("Camera config: {}", camera_config.to_string());
+
     let contrib_options = PixelContributionOptions {
         render_options: render_options.clone(),
         num_threads: options.num_threads,
         contrib_map_size: options.size_pixel_contrib,
-        fovy: 90f32.to_radians(),
+        camera_config,
     };
 
     let mut render_stats = Default::default();
