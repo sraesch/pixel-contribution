@@ -7,7 +7,7 @@ use cad_import::{
     ID,
 };
 use math::{transform_vec3, Aabb};
-use nalgebra_glm::{identity, Mat4, Vec3};
+use nalgebra_glm::{distance2, identity, Mat4, Vec3};
 use rasterizer::BoundingSphere;
 use render_lib::{Attribute, AttributeBlock, DataType, DrawCall, GPUBuffer, GPUBufferType, Shader};
 
@@ -34,7 +34,19 @@ impl CADModel {
         // determine the bounding sphere for the model
         let mut bounding_volume = Aabb::default();
         compute_aabb(cad_data.get_root_node(), &mut bounding_volume, identity());
-        let bounding_sphere = BoundingSphere::from_aabb(&bounding_volume);
+
+        let mut bounding_sphere_radius = 0f32;
+        compute_bounding_sphere_radius(
+            cad_data.get_root_node(),
+            &bounding_volume.get_center(),
+            &mut bounding_sphere_radius,
+            identity(),
+        );
+
+        bounding_sphere_radius = bounding_sphere_radius.sqrt();
+
+        let bounding_sphere =
+            BoundingSphere::from((bounding_volume.get_center(), bounding_sphere_radius));
 
         // create the shape map and the gpu meshes from the loaded cad data
         let mut instances = Vec::new();
@@ -319,5 +331,40 @@ fn compute_aabb(node: &Node, bounding_volume: &mut Aabb, transform: Mat4) {
     // traverse the children
     node.get_children().iter().for_each(|child| {
         compute_aabb(child, bounding_volume, transform);
+    });
+}
+
+/// Traverses the given node and all its children to compute the radius of the bounding sphere
+/// based on a provided sphere center.
+/// Note: The radius is the quadratic distance.
+///
+/// # Arguments
+/// * `node` - The node to traverse.
+/// * `center` - The center of the bounding sphere.
+/// * `radius` - The bounding volume to compute.
+/// * `transform` - The transformation matrix of the parent node.
+fn compute_bounding_sphere_radius(node: &Node, center: &Vec3, radius: &mut f32, transform: Mat4) {
+    // update the transformation matrix
+    let transform = match node.get_transform() {
+        Some(t) => transform * t,
+        None => transform,
+    };
+
+    // iterate over all shapes and update the bounding volume
+    node.get_shapes().iter().for_each(|shape| {
+        shape.get_parts().iter().for_each(|part| {
+            let mesh = part.get_mesh();
+            let mesh_vertices = mesh.get_vertices();
+
+            // update the radius based on the vertices of the current shape
+            mesh_vertices.get_positions().iter().for_each(|pos| {
+                *radius = radius.max(distance2(&transform_vec3(&transform, &pos.0), center))
+            });
+        });
+    });
+
+    // traverse the children
+    node.get_children().iter().for_each(|child| {
+        compute_bounding_sphere_radius(child, center, radius, transform);
     });
 }
