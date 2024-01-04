@@ -33,11 +33,11 @@ See the following illustration for a comparison between the euclidean sphere and
 
 The euclidean sphere sphere is defined by all vectors having the length $1$ w.r.t the euclidean norm. That is:
 
-$$ \left\{ v:=(x,y,z) \in \R^3 : ||v||_2 := \sqrt{x^2 + y^2 + z^2} = 1 \right\} $$
+$$ \{ v:=(x,y,z) \in \R^3 : ||v||_2 := \sqrt{x^2 + y^2 + z^2} = 1 \} $$
 
 Likewise, the octahedron sphere is defined by all vectors having the length $1$ w.r.t the 1-norm. That is:
 
-$$ \left\{ v:=(x,y,z) \in \R^3 : ||v||_1 := |x| + |y| + |z| = 1 \right\} $$
+$$ \{ v:=(x,y,z) \in \R^3 : ||v||_1 := |x| + |y| + |z| = 1 \} $$
 
 In order to map from the euclidean sphere to the octahedron sphere, we only have to normalize the vector w.r.t the 1-norm. The inverse mapping is also quite simple. We only have to normalize the vector w.r.t the euclidean norm.
 
