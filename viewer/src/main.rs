@@ -113,6 +113,7 @@ impl EventHandler for ViewerImpl {
     fn resize(&mut self, w: u32, h: u32) {
         debug!("resize({}, {})", w, h);
 
+        FrameBuffer::viewport(0, 0, w, h);
         self.camera.update_window_size(w, h);
     }
 
