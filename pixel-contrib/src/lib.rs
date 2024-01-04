@@ -23,6 +23,30 @@ use rayon::prelude::*;
 
 use crate::octahedron::decode_octahedron_normal;
 
+/// The options for the camera configuration.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CameraConfig {
+    /// An orthographic camera with no perspective.
+    Orthographic,
+
+    /// A perspective camera with the given field of view in y-direction in radians.
+    Perspective {
+        /// The field of view in y-direction in radians.
+        fovy: f32,
+    },
+}
+
+impl ToString for CameraConfig {
+    fn to_string(&self) -> String {
+        match self {
+            CameraConfig::Orthographic => "Orthographic".to_string(),
+            CameraConfig::Perspective { fovy } => {
+                format!("Perspective(fovy={} degree)", fovy.to_degrees())
+            }
+        }
+    }
+}
+
 /// The options for the pixel contribution calculation.
 pub struct PixelContributionOptions {
     /// The options for the underlying renderer.
@@ -35,7 +59,7 @@ pub struct PixelContributionOptions {
     pub contrib_map_size: usize,
 
     /// The field of view in y-direction in radians.
-    pub fovy: f32,
+    pub camera_config: CameraConfig,
 }
 
 /// Computes the pixel contribution map for the given scene.
@@ -129,7 +153,7 @@ where
             let dir = decode_octahedron_normal(Vec2::new(u, v));
 
             // create view based on the view direction
-            let view = View::new_from_sphere(&bounding_sphere, options.fovy, dir);
+            let view = View::new_from_sphere(&bounding_sphere, options.camera_config, dir);
 
             // render the scene
             let renderer: &mut R = &mut renderer;
