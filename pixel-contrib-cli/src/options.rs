@@ -4,6 +4,16 @@ use clap::{Parser, ValueEnum};
 use log::{info, LevelFilter};
 use rasterizer::RenderOptions;
 
+/// The color map for the pixel contribution.
+#[derive(ValueEnum, Clone, Copy, Debug)]
+pub enum PixelContribColorMap {
+    /// The color map is a grayscale image.
+    Grayscale,
+
+    /// The color map is a RGB image.
+    Rgb,
+}
+
 /// Workaround for parsing the different log level
 #[derive(ValueEnum, Clone, Copy, Debug)]
 pub enum LogLevel {
@@ -49,6 +59,10 @@ pub struct Options {
     /// The size of the map where the pixel contribution is stored for each pixel (i.e. view).
     #[arg(short = 'p', long, default_value_t = 256usize)]
     pub size_pixel_contrib: usize,
+
+    /// The color map for encoding the pixel contribution
+    #[arg(short, value_enum, long, default_value_t = PixelContribColorMap::Rgb)]
+    pub color_map: PixelContribColorMap,
 }
 
 impl Options {

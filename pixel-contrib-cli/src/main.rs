@@ -5,8 +5,10 @@ use std::time::Instant;
 use anyhow::Result;
 use clap::Parser;
 use log::{error, info, LevelFilter};
-use options::Options;
-use pixel_contrib::{compute_contribution_map, PixelContributionOptions};
+use options::{Options, PixelContribColorMap};
+use pixel_contrib::{
+    compute_contribution_map, GrayScaleColorMap, PixelContributionOptions, TurboColorMap,
+};
 use rasterizer::{simple_rasterizer::SimpleRasterizer, Scene, Stats, StatsNodeTrait};
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
@@ -71,7 +73,15 @@ fn execute_pixel_contribution_program(options: &Options, scene: &Scene) -> Resul
         &contrib_options,
         &mut render_stats,
     );
-    contrib_map.write_image("contrib_map.png")?;
+
+    match options.color_map {
+        PixelContribColorMap::Grayscale => {
+            contrib_map.write_image("contrib_map.png", GrayScaleColorMap::new())?;
+        }
+        PixelContribColorMap::Rgb => {
+            contrib_map.write_image("contrib_map.png", TurboColorMap::new())?;
+        }
+    }
 
     let duration = start.elapsed();
     let secs = duration.as_secs_f64();

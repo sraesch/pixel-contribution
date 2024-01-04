@@ -181,6 +181,71 @@ fn count_number_of_filled_pixel<R: Renderer>(
     histogram.iter().sum()
 }
 
+/// The color map for encoding the pixel contribution.
+pub trait ColorMap {
+    /// Maps the given value to a color.
+    fn map(&self, value: f64) -> (u8, u8, u8);
+}
+
+pub struct TurboColorMap {
+    g: colorgrad::Gradient,
+    min_val: f64,
+    max_val: f64,
+}
+
+impl Default for TurboColorMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TurboColorMap {
+    pub fn new() -> Self {
+        let g = colorgrad::turbo();
+        let (min_val, max_val) = g.domain();
+
+        Self {
+            g,
+            min_val,
+            max_val,
+        }
+    }
+}
+
+impl ColorMap for TurboColorMap {
+    fn map(&self, value: f64) -> (u8, u8, u8) {
+        let value = clamp(
+            value * self.max_val + (1f64 - value) * self.min_val,
+            self.min_val,
+            self.max_val,
+        );
+        let c = self.g.at(value).to_rgba8();
+
+        (c[0], c[1], c[2])
+    }
+}
+
+pub struct GrayScaleColorMap {}
+
+impl Default for GrayScaleColorMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl GrayScaleColorMap {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl ColorMap for GrayScaleColorMap {
+    fn map(&self, value: f64) -> (u8, u8, u8) {
+        let value = clamp(value * 255.0, 0.0, 255.0).round() as u8;
+        (value, value, value)
+    }
+}
+
 /// The resulting pixel contribution for all possible views.
 #[derive(Clone)]
 pub struct PixelContribution {
@@ -210,23 +275,23 @@ impl PixelContribution {
     ///
     /// # Arguments
     /// * `path` - The path to which the image should be written.
-    pub fn write_image<P: AsRef<Path>>(&self, path: P) -> error::Result<()> {
+    /// * `color_map` - The color map to use for encoding the pixel contribution.
+    pub fn write_image<P: AsRef<Path>, C: ColorMap>(
+        &self,
+        path: P,
+        color_map: C,
+    ) -> error::Result<()> {
         let mut img = RgbImage::new(self.size as u32, self.size as u32);
-
-        let g = colorgrad::turbo();
-        let (min_val, max_val) = g.domain();
 
         self.pixel_contrib
             .iter()
             .zip(img.pixels_mut())
             .for_each(|(p, pixel)| {
-                let p = *p as f64;
-                let p = clamp(p * max_val + (1f64 - p) * min_val, min_val, max_val);
-                let c = g.at(p).to_rgba8();
+                let c = color_map.map(*p as f64);
 
-                pixel[0] = c[0];
-                pixel[1] = c[1];
-                pixel[2] = c[2];
+                pixel[0] = c.0;
+                pixel[1] = c.1;
+                pixel[2] = c.2;
             });
 
         img.save(path)?;
