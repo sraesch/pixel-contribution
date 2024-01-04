@@ -105,7 +105,9 @@ impl EventHandler for ViewerImpl {
 
         FrameBuffer::set_blending(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         configure_culling(FaceCulling::Back);
-        self.sphere.render(&combined_mat, self.sphere_transparency);
+        if self.sphere_transparency > 0.0 {
+            self.sphere.render(&combined_mat, self.sphere_transparency);
+        }
         configure_culling(FaceCulling::None);
         FrameBuffer::disable_blend();
     }
@@ -142,6 +144,15 @@ impl EventHandler for ViewerImpl {
                 "s" => {
                     if pressed {
                         self.sphere_transparency = (self.sphere_transparency - 0.1).max(0.0);
+                    }
+                }
+                "c" => {
+                    if pressed {
+                        let (w, h, values) = FrameBuffer::get_depth_buffer_values();
+                        info!("Read depth buffer with size {}x{}", w, h);
+
+                        let num_pixels = values.iter().filter(|v| **v != 1.0).count();
+                        info!("Number of filled pixels: {}", num_pixels);
                     }
                 }
                 _ => {}
