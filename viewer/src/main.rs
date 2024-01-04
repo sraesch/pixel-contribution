@@ -25,6 +25,9 @@ struct ViewerImpl {
 
     sphere: Sphere,
     cad_model: Option<CADModel>,
+    bounding_sphere: BoundingSphere,
+
+    sphere_transparency: f32,
 }
 
 impl ViewerImpl {
@@ -34,6 +37,8 @@ impl ViewerImpl {
             camera: Default::default(),
             sphere: Default::default(),
             cad_model: None,
+            bounding_sphere: BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 1.0)),
+            sphere_transparency: 0.5,
         }
     }
 }
@@ -46,18 +51,15 @@ impl EventHandler for ViewerImpl {
 
         self.cad_model = match CADModel::new(&self.options.model_file) {
             Ok(cad_model) => {
-                let bounding_sphere = cad_model.get_bounding_sphere();
+                self.bounding_sphere = cad_model.get_bounding_sphere().clone();
 
-                info!("CAD-Data Bounding sphere: {:?}", bounding_sphere);
+                info!("CAD-Data Bounding sphere: {:?}", self.bounding_sphere);
 
-                self.camera.focus(&bounding_sphere).unwrap();
+                self.camera.focus(&self.bounding_sphere).unwrap();
                 Some(cad_model)
             }
             Err(err) => {
                 error!("Failed to load CAD model: {}", err);
-                self.camera
-                    .focus(&BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 2.0)))
-                    .unwrap();
 
                 None
             }
@@ -87,11 +89,23 @@ impl EventHandler for ViewerImpl {
             cad_model.render(&model_view_mat, &proj_mat);
         }
 
-        let combined_mat = self.camera.get_data().get_combined_matrix();
+        // create the translation and scale matrix for the sphere based on the bounding sphere
+        let sphere_mat = {
+            let scale_mat = nalgebra_glm::scaling(&Vec3::new(
+                self.bounding_sphere.radius,
+                self.bounding_sphere.radius,
+                self.bounding_sphere.radius,
+            ));
+            let translation_mat = nalgebra_glm::translation(&self.bounding_sphere.center);
+
+            translation_mat * scale_mat
+        };
+
+        let combined_mat = self.camera.get_data().get_combined_matrix() * sphere_mat;
 
         FrameBuffer::set_blending(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         configure_culling(FaceCulling::Back);
-        self.sphere.render(&combined_mat);
+        self.sphere.render(&combined_mat, self.sphere_transparency);
         configure_culling(FaceCulling::None);
         FrameBuffer::disable_blend();
     }
@@ -116,6 +130,18 @@ impl EventHandler for ViewerImpl {
 
     fn keyboard_event(&mut self, key: Key, pressed: bool) {
         trace!("keyboard_event({:?}, {})", key, pressed);
+
+        if let Key::Character(c) = key {
+            match c.as_str() {
+                "w" => {
+                    self.sphere_transparency = (self.sphere_transparency + 0.1).min(1.0);
+                }
+                "s" => {
+                    self.sphere_transparency = (self.sphere_transparency - 0.1).max(0.0);
+                }
+                _ => {}
+            }
+        }
     }
 }
 

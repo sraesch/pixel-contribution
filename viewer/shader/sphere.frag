@@ -5,6 +5,7 @@
 //------------------------------------------
 
 uniform sampler2D uniform_texture;
+uniform float uniform_transparency;
 
 //------------------------------------------
 // INPUTS
@@ -47,5 +48,5 @@ void main() {
     vec2 texCoord = encode_octahedron_normal(normalize(var_pos));
 
     vec3 c = vec3(texture(uniform_texture, texCoord));
-    frag_color = vec4(c, 0.5);
+    frag_color = vec4(c, uniform_transparency);
 }

@@ -21,6 +21,7 @@ pub struct Sphere {
 
     uniform_texture: Uniform,
     uniform_combined_mat: Uniform,
+    uniform_transparency: Uniform,
 
     draw_call: DrawCall,
 }
@@ -45,6 +46,7 @@ impl Sphere {
 
             uniform_texture: Uniform::default(),
             uniform_combined_mat: Uniform::default(),
+            uniform_transparency: Uniform::default(),
 
             draw_call: DrawCall::default(),
         }
@@ -64,6 +66,7 @@ impl Sphere {
         self.shader.load(vert_shader, frag_shader)?;
         self.uniform_texture = self.shader.get_uniform("uniform_texture").unwrap();
         self.uniform_combined_mat = self.shader.get_uniform("uniform_combined_mat").unwrap();
+        self.uniform_transparency = self.shader.get_uniform("uniform_transparency").unwrap();
         info!("compile shader...DONE");
 
         // initialize texture
@@ -98,11 +101,15 @@ impl Sphere {
     /// # Arguments
     /// * `combined_mat` - The combined matrix of the camera, i.e., the projection matrix
     ///                    multiplied by the view matrix.
-    pub fn render(&self, combined_mat: &Mat4) {
+    /// * `transparency` - The transparency of the sphere. The value must be in the range [0, 1].
+    ///                    A value of 0 means that the sphere is completely transparent, while a
+    ///                    value of 1 means that the sphere is completely opaque.
+    pub fn render(&self, combined_mat: &Mat4, transparency: f32) {
         self.shader.bind();
         self.texture.bind();
         self.uniform_texture.set_int(0);
         self.uniform_combined_mat.set_matrix4(combined_mat);
+        self.uniform_transparency.set_float(transparency);
         self.draw_call.draw_with_indices(
             PrimitiveType::Triangles,
             &self.indices,
