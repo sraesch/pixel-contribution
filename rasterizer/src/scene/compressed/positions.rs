@@ -83,8 +83,7 @@ impl<Integer: IntegerTrait> CompressedPositionsRaw<Integer> {
     /// # Arguments
     /// * `positions` - The positions to compress.
     pub fn new(positions: &[Vec3]) -> Self {
-        let mut data: Vec<Integer> = Vec::new();
-        data.reserve(positions.len() * 3);
+        let mut data: Vec<Integer> = Vec::with_capacity(positions.len() * 3);
 
         let q = Self::quantize_positions(positions, &mut data);
 
