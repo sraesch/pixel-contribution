@@ -46,10 +46,11 @@ impl EventHandler for ViewerImpl {
 
         self.cad_model = match CADModel::new(&self.options.model_file) {
             Ok(cad_model) => {
-                // TODO: compute bounding sphere for the CAD model
-                self.camera
-                    .focus(&BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 2.0)))
-                    .unwrap();
+                let bounding_sphere = cad_model.get_bounding_sphere();
+
+                info!("CAD-Data Bounding sphere: {:?}", bounding_sphere);
+
+                self.camera.focus(&bounding_sphere).unwrap();
                 Some(cad_model)
             }
             Err(err) => {

@@ -6,6 +6,7 @@ use cad_import::{
     structure::{CADData, IndexData, Node, PrimitiveType, Shape},
     ID,
 };
+use math::{transform_vec3, Aabb};
 use nalgebra_glm::{identity, Mat4, Vec3};
 use rasterizer::BoundingSphere;
 use render_lib::{Attribute, AttributeBlock, DataType, DrawCall, GPUBuffer, GPUBufferType, Shader};
@@ -18,6 +19,8 @@ pub struct CADModel {
     shader: Shader,
     uniform_combined_mat: render_lib::Uniform,
     uniform_model_view_mat: render_lib::Uniform,
+
+    bounding_sphere: BoundingSphere,
 }
 
 impl CADModel {
@@ -27,6 +30,11 @@ impl CADModel {
     /// * `filename` - The path to the CAD file to load.
     pub fn new(filename: &Path) -> Result<Self> {
         let cad_data = Self::load_cad_data(filename)?;
+
+        // determine the bounding sphere for the model
+        let mut bounding_volume = Aabb::default();
+        compute_aabb(cad_data.get_root_node(), &mut bounding_volume, identity());
+        let bounding_sphere = BoundingSphere::from_aabb(&bounding_volume);
 
         // create the shape map and the gpu meshes from the loaded cad data
         let mut instances = Vec::new();
@@ -55,6 +63,7 @@ impl CADModel {
             shader,
             uniform_combined_mat,
             uniform_model_view_mat,
+            bounding_sphere,
         })
     }
 
@@ -64,18 +73,23 @@ impl CADModel {
     /// * `model_view_mat` - The model view matrix.
     /// * `proj_mat` - The projection matrix.
     pub fn render(&self, model_view_mat: &Mat4, proj_mat: &Mat4) {
-        let combined_mat = proj_mat * model_view_mat;
-
         self.shader.bind();
-
-        self.uniform_combined_mat.set_matrix4(&combined_mat);
 
         self.instances.iter().for_each(|instance| {
             let m = model_view_mat * instance.transform;
+            let combined_mat = proj_mat * m;
+
             self.uniform_model_view_mat.set_matrix4(&m);
+            self.uniform_combined_mat.set_matrix4(&combined_mat);
 
             self.gpu_meshes[instance.gpu_mesh].render();
         });
+    }
+
+    /// Returns the bounding sphere of the CAD model.
+    #[inline]
+    pub fn get_bounding_sphere(&self) -> &BoundingSphere {
+        &self.bounding_sphere
     }
 
     /// Tries to load the cad data from the given path
@@ -271,4 +285,39 @@ fn accumulate_mesh_data(shape: &Shape) -> (Vec<Vec3>, Vec<u32>) {
     });
 
     (vertices, indices)
+}
+
+/// Traverses the given node and all its children to compute the AABB bounding volume.
+///
+/// # Arguments
+/// * `node` - The node to traverse.
+/// * `bounding_volume` - The bounding volume to compute.
+/// * `transform` - The transformation matrix of the parent node.
+fn compute_aabb(node: &Node, bounding_volume: &mut Aabb, transform: Mat4) {
+    // update the transformation matrix
+    let transform = match node.get_transform() {
+        Some(t) => transform * t,
+        None => transform,
+    };
+
+    // iterate over all shapes and update the bounding volume
+    node.get_shapes().iter().for_each(|shape| {
+        shape.get_parts().iter().for_each(|part| {
+            let mesh = part.get_mesh();
+            let mesh_vertices = mesh.get_vertices();
+
+            // extend the bounding volume by all vertices of the current shape
+            bounding_volume.extend_iter(
+                mesh_vertices
+                    .get_positions()
+                    .iter()
+                    .map(|pos| transform_vec3(&transform, &pos.0)),
+            );
+        });
+    });
+
+    // traverse the children
+    node.get_children().iter().for_each(|child| {
+        compute_aabb(child, bounding_volume, transform);
+    });
 }
