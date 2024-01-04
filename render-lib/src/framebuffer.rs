@@ -252,6 +252,21 @@ impl FrameBuffer {
         gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
     }
 
+    /// Enables and sets the blending function
+    ///
+    /// # Arguments
+    /// * `src` - The source blending factor
+    /// * `dst` - The destination blending factor
+    pub fn set_blending(src: BlendFactor, dst: BlendFactor) {
+        gl_call!(gl::Enable(gl::BLEND));
+        gl_call!(gl::BlendFunc(src as GLenum, dst as GLenum));
+    }
+
+    /// Disables the blending.
+    pub fn disable_blend() {
+        gl_call!(gl::Disable(gl::BLEND));
+    }
+
     /// Function for updating the viewport with the given rectangle
     ///
     ///* `x` - The x coordinate of the rectangle origin
@@ -284,4 +299,25 @@ impl FrameBuffer {
     pub fn main_frame_buffer() -> Self {
         Self::default()
     }
+}
+
+/// Blending factors
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BlendFactor {
+    Zero = gl::ZERO,
+    One = gl::ONE,
+    SrcColor = gl::SRC_COLOR,
+    OneMinusSrcColor = gl::ONE_MINUS_SRC_COLOR,
+    DstColor = gl::DST_COLOR,
+    OneMinusDstColor = gl::ONE_MINUS_DST_COLOR,
+    SrcAlpha = gl::SRC_ALPHA,
+    OneMinusSrcAlpha = gl::ONE_MINUS_SRC_ALPHA,
+    DstAlpha = gl::DST_ALPHA,
+    OneMinusDstAlpha = gl::ONE_MINUS_DST_ALPHA,
+    ConstantColor = gl::CONSTANT_COLOR,
+    OneMinusConstantColor = gl::ONE_MINUS_CONSTANT_COLOR,
+    ConstantAlpha = gl::CONSTANT_ALPHA,
+    OneMinusConstantAlpha = gl::ONE_MINUS_CONSTANT_ALPHA,
+    SrcAlphaSaturate = gl::SRC_ALPHA_SATURATE,
 }

@@ -47,5 +47,5 @@ void main() {
     vec2 texCoord = encode_octahedron_normal(normalize(var_pos));
 
     vec3 c = vec3(texture(uniform_texture, texCoord));
-    frag_color = vec4(c, 1.0);
+    frag_color = vec4(c, 0.5);
 }

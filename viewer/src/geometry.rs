@@ -69,8 +69,8 @@ pub fn create_sphere(radius: f32, num_rings: usize, num_sectors: usize) -> (Vec<
     let top_pole_index = vertices.len() as u32 - 1;
     for s in 0..num_sectors {
         indices.push(top_pole_index);
-        indices.push(s + vertex_offset);
         indices.push((s + 1) % num_sectors + vertex_offset);
+        indices.push(s + vertex_offset);
     }
 
     (vertices, indices)

@@ -14,8 +14,8 @@ use options::Options;
 use anyhow::Result;
 use rasterizer::BoundingSphere;
 use render_lib::{
-    camera::Camera, create_and_run_canvas, CanvasOptions, EventHandler, FrameBuffer, Key,
-    MouseButton,
+    camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
+    EventHandler, FaceCulling, FrameBuffer, Key, MouseButton,
 };
 use sphere::Sphere;
 
@@ -64,6 +64,7 @@ impl EventHandler for ViewerImpl {
         };
 
         FrameBuffer::depthtest(true);
+        configure_culling(FaceCulling::None);
 
         self.camera.update_window_size(width, height);
         info!("setup...DONE");
@@ -86,9 +87,13 @@ impl EventHandler for ViewerImpl {
             cad_model.render(&model_view_mat, &proj_mat);
         }
 
-        // let combined_mat = self.camera.get_data().get_combined_matrix();
+        let combined_mat = self.camera.get_data().get_combined_matrix();
 
-        // self.sphere.render(&combined_mat);
+        FrameBuffer::set_blending(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+        configure_culling(FaceCulling::Back);
+        self.sphere.render(&combined_mat);
+        configure_culling(FaceCulling::None);
+        FrameBuffer::disable_blend();
     }
 
     fn resize(&mut self, w: u32, h: u32) {
