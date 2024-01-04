@@ -195,6 +195,39 @@ impl FrameBuffer {
     pub fn get_textures(&self) -> &[Texture] {
         self.render_textures.as_ref()
     }
+
+    /// Returns the internally stored depth buffer values
+    ///
+    /// # Returns
+    /// * `width` - The width of the depth buffer.
+    /// * `height` - The height of the depth buffer.
+    /// * `values` - The depth buffer values.
+    pub fn get_depth_buffer_values() -> (usize, usize, Vec<f32>) {
+        // get the size of the viewport
+        let mut view_port: [i32; 4] = [0; 4];
+        gl_call!(gl::GetIntegerv(
+            gl::VIEWPORT,
+            view_port.as_mut_ptr() as *mut _
+        ));
+
+        let width = view_port[2] as usize;
+        let height = view_port[3] as usize;
+
+        let mut values: Vec<f32> = Vec::new();
+        values.resize(width * height, 0.0);
+
+        gl_call!(gl::ReadPixels(
+            0,
+            0,
+            width as GLsizei,
+            height as GLsizei,
+            gl::DEPTH_COMPONENT,
+            gl::FLOAT,
+            values.as_mut_ptr() as *mut _
+        ));
+
+        (width, height, values)
+    }
 }
 
 impl Bind for FrameBuffer {
