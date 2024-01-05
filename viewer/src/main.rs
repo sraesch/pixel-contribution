@@ -8,7 +8,8 @@ use std::error::Error;
 use cad_model::CADModel;
 use clap::Parser;
 use log::{debug, error, info, trace, LevelFilter};
-use nalgebra_glm::{Vec3, Vec4};
+use math::extract_camera_position;
+use nalgebra_glm::{Mat4, Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
@@ -153,12 +154,52 @@ impl EventHandler for ViewerImpl {
 
                         let num_pixels = values.iter().filter(|v| **v != 1.0).count();
                         info!("Number of filled pixels: {}", num_pixels);
+
+                        let (model_view, fovy, height) = {
+                            let data = self.camera.get_data();
+                            (
+                                data.get_model_matrix(),
+                                data.get_fovy(),
+                                data.get_window_size().1 as f32,
+                            )
+                        };
+
+                        let sphere_radius = estimate_bounding_sphere_radius_on_screen(
+                            &model_view,
+                            fovy,
+                            &self.bounding_sphere,
+                        ) * height;
+
+                        info!("Bounding sphere radius on screen: {}", sphere_radius);
                     }
                 }
                 _ => {}
             }
         }
     }
+}
+
+/// Estimates the radius of the bounding sphere on the screen in the range [0, 1].
+/// A value of 1 means that the sphere fills the screen completely.
+/// Note: This does not take the aspect ratio or the frustum into account.
+///
+/// # Arguments
+/// * `model_view` - The model view matrix.
+/// * `fovy` - The field of view in y-direction in radians.
+/// * `sphere` - The bounding sphere.
+fn estimate_bounding_sphere_radius_on_screen(
+    model_view: &Mat4,
+    fovy: f32,
+    sphere: &BoundingSphere,
+) -> f32 {
+    let cam_pos = extract_camera_position(model_view);
+    let d = nalgebra_glm::distance(&cam_pos, &sphere.center);
+
+    // determine the radius of a sphere that would fully fill the screen ignoring the aspect ratio
+    let radius = (fovy / 2.0).sin() * d;
+
+    // use this radius to estimate how much the screen is being filled by the sphere
+    sphere.radius / radius
 }
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
