@@ -168,9 +168,14 @@ impl EventHandler for ViewerImpl {
                             &model_view,
                             fovy,
                             &self.bounding_sphere,
-                        ) * height;
+                        ) * height
+                            / 2.0;
 
                         info!("Bounding sphere radius on screen: {}", sphere_radius);
+                        info!(
+                            "Predicted number of filled pixels: {}",
+                            sphere_radius * sphere_radius * std::f32::consts::PI
+                        );
                     }
                 }
                 _ => {}
@@ -195,11 +200,16 @@ fn estimate_bounding_sphere_radius_on_screen(
     let cam_pos = extract_camera_position(model_view);
     let d = nalgebra_glm::distance(&cam_pos, &sphere.center);
 
-    // determine the radius of a sphere that would fully fill the screen ignoring the aspect ratio
-    let radius = (fovy / 2.0).sin() * d;
+    // project the ray that tangentially touches the sphere onto the plane that is 'd' units away
+    // from the camera
+    let phi = (sphere.radius / d).asin();
+    let projected_radius = phi.tan() * d;
+
+    // now compute half the length of the side of the frustum at the distance 'd'
+    let r_capital = (fovy / 2.0).tan() * d;
 
     // use this radius to estimate how much the screen is being filled by the sphere
-    sphere.radius / radius
+    projected_radius / r_capital
 }
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
