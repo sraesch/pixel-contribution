@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 rasterizer = { path = "../rasterizer" }
 render-lib = { path = "../render-lib" }
+pixel-contrib = { path = "../pixel-contrib" }
 math = { path = "../math" }
 cad_import = "0.3.1"
 log = "0.4"
@@ -15,4 +16,3 @@ anyhow = "1.0"
 nalgebra-glm = "0.18"
 clap = { version = "4.4", features = ["derive"] }
 env_logger = "0.10"
-image = "0.24"

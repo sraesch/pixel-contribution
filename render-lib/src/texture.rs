@@ -10,6 +10,7 @@ use crate::{Bind, DataType, Error, Resource, Result};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum PixelFormat {
+    Gray = gl::RED,
     Rgb = gl::RGB,
     Rgba = gl::RGBA,
 }

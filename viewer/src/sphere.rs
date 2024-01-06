@@ -1,11 +1,12 @@
-use std::{mem::size_of, path::Path};
+use std::mem::size_of;
 
 use anyhow::Result;
 use log::info;
 use nalgebra_glm::Mat4;
+use pixel_contrib::PixelContribution;
 use render_lib::{
     Attribute, AttributeBlock, Bind, DataType, DrawCall, Filtering, GPUBuffer, GPUBufferType,
-    IndexData, PrimitiveType, Shader, Texture, Uniform,
+    IndexData, PrimitiveType, Shader, Texture, TextureData, TextureDescriptor, Uniform,
 };
 
 use crate::geometry::create_sphere;
@@ -55,8 +56,8 @@ impl Sphere {
     /// Setups the sphere and loads the corresponding image file.
     ///
     /// # Arguments
-    /// * `image_file` - The path to the image file, i.e., the pixel contribution map.
-    pub fn setup<P: AsRef<Path>>(&mut self, image_file: P) -> Result<()> {
+    /// * `pixel_contribution` - The pixel contribution data.
+    pub fn setup(&mut self, pixel_contribution: &PixelContribution) -> Result<()> {
         info!("Setup sphere...");
 
         let vert_shader = include_str!("../shader/sphere.vert");
@@ -70,8 +71,22 @@ impl Sphere {
         info!("compile shader...DONE");
 
         // initialize texture
-        self.texture
-            .generate_from_image(&image_file, Filtering::Linear)?;
+        let pixel_contrib_data: &[u8] = unsafe {
+            std::slice::from_raw_parts(
+                pixel_contribution.pixel_contrib.as_ptr() as *const u8,
+                pixel_contribution.pixel_contrib.len() * size_of::<f32>(),
+            )
+        };
+        self.texture.generate(&TextureData {
+            descriptor: TextureDescriptor {
+                width: pixel_contribution.size as u32,
+                height: pixel_contribution.size as u32,
+                format: render_lib::PixelFormat::Gray,
+                filtering: Filtering::Linear,
+                datatype: DataType::Float,
+            },
+            data: Some(pixel_contrib_data),
+        });
 
         // initializes sphere geometry
         let sphere_geo = create_sphere(1.0, 100, 100);

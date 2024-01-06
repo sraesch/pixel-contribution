@@ -13,6 +13,7 @@ use nalgebra_glm::{Mat4, Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
+use pixel_contrib::PixelContribution;
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
@@ -29,18 +30,24 @@ struct ViewerImpl {
     bounding_sphere: BoundingSphere,
 
     sphere_transparency: f32,
+
+    pixel_contrib: PixelContribution,
 }
 
 impl ViewerImpl {
-    pub fn new(options: Options) -> Self {
-        Self {
+    pub fn new(options: Options) -> Result<Self> {
+        // load pixel contribution
+        let pixel_contrib = PixelContribution::read_binary(options.pixel_contribution.as_path())?;
+
+        Ok(Self {
             options,
             camera: Default::default(),
             sphere: Default::default(),
             cad_model: None,
             bounding_sphere: BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 1.0)),
             sphere_transparency: 0.5,
-        }
+            pixel_contrib,
+        })
     }
 }
 
@@ -48,7 +55,7 @@ impl EventHandler for ViewerImpl {
     fn setup(&mut self, width: u32, height: u32) -> Result<(), Box<dyn Error>> {
         info!("setup...");
 
-        self.sphere.setup(self.options.image_file.as_path())?;
+        self.sphere.setup(&self.pixel_contrib)?;
 
         self.cad_model = match CADModel::new(&self.options.model_file) {
             Ok(cad_model) => {
@@ -233,7 +240,7 @@ fn run_program() -> Result<()> {
 
     options.dump_to_log();
 
-    let viewer = ViewerImpl::new(options);
+    let viewer = ViewerImpl::new(options)?;
     create_and_run_canvas(
         CanvasOptions {
             title: "Viewer".to_string(),

@@ -8,6 +8,9 @@ quick_error! {
         IO(err: String) {
             display("{}", err)
         }
+        Internal(err: String) {
+            display("{}", err)
+        }
     }
 }
 

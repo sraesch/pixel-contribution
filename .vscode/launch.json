@@ -44,7 +44,7 @@
             },
             "args": [
                 "-i",
-                "${workspaceFolder}/test_data/images/plane_contrib_map.png",
+                "${workspaceFolder}/test_data/contrib_maps/plane_contrib_map.bin",
                 "-m",
                 "${workspaceFolder}/test_data/models/plane.glb"
             ],
@@ -67,7 +67,7 @@
             },
             "args": [
                 "-i",
-                "${workspaceFolder}/test_data/images/2_boxes_contrib_map.png",
+                "${workspaceFolder}/test_data/contrib_maps/2_boxes_contrib_map.bin",
                 "-m",
                 "${workspaceFolder}/test_data/models/2Boxes.glb"
             ],

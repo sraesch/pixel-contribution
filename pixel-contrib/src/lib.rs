@@ -20,6 +20,7 @@ use rasterizer::{
     StatsNodeTrait,
 };
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::octahedron::decode_octahedron_normal;
 
@@ -271,7 +272,7 @@ impl ColorMap for GrayScaleColorMap {
 }
 
 /// The resulting pixel contribution for all possible views.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct PixelContribution {
     /// The size of the quadratic pixel contribution map.
     pub size: usize,
@@ -321,5 +322,31 @@ impl PixelContribution {
         img.save(path)?;
 
         Ok(())
+    }
+
+    /// Writes the pixel contribution map to the given path as binary file.
+    ///
+    /// # Arguments
+    /// * `path` - The path to which the pixel contribution should be written.
+    pub fn write_binary<P: AsRef<Path>>(&self, path: P) -> error::Result<()> {
+        let file = std::fs::File::create(path)?;
+
+        bincode::serialize_into(file, self)
+            .map_err(|e| Error::Internal(format!("Failed to encode: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Reads the pixel contribution map from the given path.
+    ///
+    /// # Arguments
+    /// * `path` - The path from which the pixel contribution should be read.
+    pub fn read_binary<P: AsRef<Path>>(path: P) -> error::Result<Self> {
+        let file = std::fs::File::open(path)?;
+
+        let pixel_contrib = bincode::deserialize_from(file)
+            .map_err(|e| Error::IO(format!("Failed to decode: {}", e)))?;
+
+        Ok(pixel_contrib)
     }
 }
