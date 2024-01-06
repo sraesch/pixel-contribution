@@ -11,6 +11,7 @@ pub struct CameraData {
     cam_axis: Mat3,
     radius: f32,
     window_size: (u32, u32),
+    fovy: f32,
 
     scene_center: Vec3,
     scene_radius: f32,
@@ -32,10 +33,26 @@ impl CameraData {
             cam_axis: identity_matrix,
             radius: 0.0,
             window_size: (100, 100),
+            fovy: 90f32.to_radians(),
 
             scene_center: Vec3::new(0f32, 0f32, 0f32),
             scene_radius: 10f32,
         }
+    }
+
+    /// Sets the camera's `field of view angle in y-direction (fovy` (in radians).
+    ///
+    /// # Arguments
+    /// * `fovy` - The field of view angle in y-direction (in radians).
+    #[inline]
+    pub fn set_fovy(&mut self, fovy: f32) {
+        self.fovy = fovy;
+    }
+
+    /// Returns the camera's `field of view angle in y-direction (fovy` (in radians).
+    #[inline]
+    pub fn get_fovy(&self) -> f32 {
+        self.fovy
     }
 
     /// Returns the model view matrix for the camera.
@@ -73,7 +90,7 @@ impl CameraData {
         let far = z + self.scene_radius * 1.5;
         let near = (z - self.scene_radius).max(far * 1e-6f32);
 
-        perspective(aspect, 1.0, near, far)
+        perspective(aspect, self.fovy, near, far)
     }
 
     /// Returns the combined matrix, i.e. the combination of the projection and model view matrix
