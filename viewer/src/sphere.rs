@@ -3,7 +3,7 @@ use std::mem::size_of;
 use anyhow::Result;
 use log::info;
 use nalgebra_glm::Mat4;
-use pixel_contrib::PixelContribution;
+use pixel_contrib::PixelContributionMap;
 use render_lib::{
     Attribute, AttributeBlock, Bind, DataType, DrawCall, Filtering, GPUBuffer, GPUBufferType,
     IndexData, PrimitiveType, Shader, Texture, TextureData, TextureDescriptor, Uniform,
@@ -57,7 +57,7 @@ impl Sphere {
     ///
     /// # Arguments
     /// * `pixel_contribution` - The pixel contribution data.
-    pub fn setup(&mut self, pixel_contribution: &PixelContribution) -> Result<()> {
+    pub fn setup(&mut self, pixel_contribution: &PixelContributionMap) -> Result<()> {
         info!("Setup sphere...");
 
         let vert_shader = include_str!("../shader/sphere.vert");

@@ -13,7 +13,7 @@ use nalgebra_glm::{Mat4, Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::PixelContribution;
+use pixel_contrib::PixelContributionMap;
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
@@ -31,13 +31,13 @@ struct ViewerImpl {
 
     sphere_transparency: f32,
 
-    pixel_contrib: PixelContribution,
+    pixel_contrib: PixelContributionMap,
 }
 
 impl ViewerImpl {
     pub fn new(options: Options) -> Result<Self> {
         // load pixel contribution
-        let pixel_contrib = PixelContribution::from_file(options.pixel_contribution.as_path())?;
+        let pixel_contrib = PixelContributionMap::from_file(options.pixel_contribution.as_path())?;
 
         Ok(Self {
             options,

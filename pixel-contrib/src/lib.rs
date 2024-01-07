@@ -76,7 +76,7 @@ pub fn compute_contribution_map<R>(
     stats: StatsNode,
     options: &PixelContributionOptions,
     render_stats: &mut RenderStats,
-) -> PixelContribution
+) -> PixelContributionMap
 where
     R: Renderer,
 {
@@ -120,7 +120,7 @@ where
     let progress = Arc::new(Mutex::new(progress::Progress::new(
         contrib_map_size * contrib_map_size,
     )));
-    let mut pixel_contrib = PixelContribution::new(contrib_map_size);
+    let mut pixel_contrib = PixelContributionMap::new(contrib_map_size);
 
     pixel_contrib
         .pixel_contrib
@@ -274,7 +274,7 @@ impl ColorMap for GrayScaleColorMap {
 
 /// The resulting pixel contribution for all possible views.
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
-pub struct PixelContribution {
+pub struct PixelContributionMap {
     /// The size of the quadratic pixel contribution map.
     pub size: usize,
 
@@ -285,7 +285,7 @@ pub struct PixelContribution {
     pub pixel_contrib: Vec<f32>,
 }
 
-impl PixelContribution {
+impl PixelContributionMap {
     /// Creates a new pixel contribution map with the given size.
     ///
     /// # Arguments
@@ -374,7 +374,7 @@ mod test {
 
     #[test]
     fn test_serialization() {
-        let mut pixel_contrib = PixelContribution::new(16);
+        let mut pixel_contrib = PixelContributionMap::new(16);
         pixel_contrib
             .pixel_contrib
             .iter_mut()
@@ -386,7 +386,7 @@ mod test {
         let mut buf = Vec::new();
         pixel_contrib.write_writer(&mut buf).unwrap();
 
-        let pixel_contrib2 = PixelContribution::from_reader(&mut buf.as_slice()).unwrap();
+        let pixel_contrib2 = PixelContributionMap::from_reader(&mut buf.as_slice()).unwrap();
 
         assert_eq!(pixel_contrib.size, pixel_contrib2.size);
         assert_eq!(pixel_contrib.pixel_contrib, pixel_contrib2.pixel_contrib);
