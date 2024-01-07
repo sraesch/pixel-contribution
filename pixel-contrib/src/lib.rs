@@ -367,3 +367,28 @@ impl PixelContribution {
         Ok(pixel_contrib)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_serialization() {
+        let mut pixel_contrib = PixelContribution::new(16);
+        pixel_contrib
+            .pixel_contrib
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, p)| {
+                *p = i as f32 / 255.0;
+            });
+
+        let mut buf = Vec::new();
+        pixel_contrib.write_writer(&mut buf).unwrap();
+
+        let pixel_contrib2 = PixelContribution::from_reader(&mut buf.as_slice()).unwrap();
+
+        assert_eq!(pixel_contrib.size, pixel_contrib2.size);
+        assert_eq!(pixel_contrib.pixel_contrib, pixel_contrib2.pixel_contrib);
+    }
+}
