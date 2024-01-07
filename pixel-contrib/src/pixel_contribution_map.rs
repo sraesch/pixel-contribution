@@ -5,9 +5,13 @@ use std::{
 
 use image::RgbImage;
 use nalgebra_glm::{Vec2, Vec3};
+use rasterizer::clamp;
 use serde::{Deserialize, Serialize};
 
-use crate::{octahedron::decode_octahedron_normal, ColorMap, Error, Result};
+use crate::{
+    octahedron::{decode_octahedron_normal, encode_octahedron_normal},
+    ColorMap, Error, Result,
+};
 
 /// The resulting pixel contribution for all possible views.
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
@@ -134,15 +138,25 @@ impl PixelContribColorMapDescriptor {
     /// # Arguments
     /// * `index` - The index of the pixel contribution value.
     pub fn camera_dir_from_index(&self, index: usize) -> Vec3 {
-        let u = index % self.map_size;
-        let v = index / self.map_size;
+        let u = (index % self.map_size) as f32 + 0.5;
+        let v = (index / self.map_size) as f32 + 0.5;
 
-        let uv = Vec2::new(
-            u as f32 / self.map_size as f32,
-            v as f32 / self.map_size as f32,
-        );
+        let uv = Vec2::new(u, v) / self.map_size as f32;
 
         decode_octahedron_normal(uv)
+    }
+
+    /// Returns the index for the given camera direction vector.
+    ///
+    /// # Arguments
+    /// * `dir` - The camera direction vector to the object.
+    pub fn index_from_camera_dir(&self, dir: Vec3) -> usize {
+        let uv = encode_octahedron_normal(dir) * self.map_size as f32 - Vec2::new(0.5, 0.5);
+
+        let u = clamp(uv.x.round() as usize, 0, self.map_size - 1);
+        let v = clamp(uv.y.round() as usize, 0, self.map_size - 1);
+
+        v * self.map_size + u
     }
 }
 
@@ -170,5 +184,21 @@ mod test {
 
         assert_eq!(pixel_contrib.descriptor, pixel_contrib2.descriptor);
         assert_eq!(pixel_contrib.pixel_contrib, pixel_contrib2.pixel_contrib);
+    }
+
+    #[test]
+    fn test_camera_dir_index_mapping() {
+        let map_sizes = [16, 32, 64, 128, 256, 512, 1024];
+
+        for map_size in map_sizes {
+            let descriptor = PixelContribColorMapDescriptor::new(map_size);
+
+            for i in 0..descriptor.num_values() {
+                let dir = descriptor.camera_dir_from_index(i);
+                let index = descriptor.index_from_camera_dir(dir);
+
+                assert_eq!(i, index);
+            }
+        }
     }
 }
