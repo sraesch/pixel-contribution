@@ -4,32 +4,32 @@ use std::{
 };
 
 use image::RgbImage;
+use nalgebra_glm::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
 
-use crate::{ColorMap, Error, Result};
+use crate::{octahedron::decode_octahedron_normal, ColorMap, Error, Result};
 
 /// The resulting pixel contribution for all possible views.
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct PixelContributionMap {
-    /// The size of the quadratic pixel contribution map.
-    pub size: usize,
+    pub descriptor: PixelContribColorMapDescriptor,
 
-    /// The 2D map for the pixel contribution of each view. Each pixel position represents a view.
-    /// The normalized pixel position (u,v) is mapped to a normal using octahedral projection.
-    /// The normal then defines the camera view direction.
-    /// The values are in the range [0, 1].
+    /// The 2D map for the pixel contribution of each view. Each position on the map
+    /// represents a view. The normalized position (u,v) is mapped to a normal using octahedral
+    /// projection. The normal then defines the camera view direction onto the object.
+    /// The pixel contribution values are in the range [0, 1].
     pub pixel_contrib: Vec<f32>,
 }
 
 impl PixelContributionMap {
-    /// Creates a new pixel contribution map with the given size.
+    /// Creates a new pixel contribution map for the given size with 0 contribution.
     ///
     /// # Arguments
-    /// * `size` - The size of the quadratic pixel contribution map.
-    pub fn new(size: usize) -> Self {
+    /// * `descriptor` - The descriptor for the pixel contribution map.
+    pub fn new(descriptor: PixelContribColorMapDescriptor) -> Self {
         Self {
-            size,
-            pixel_contrib: vec![0.0; size * size],
+            descriptor,
+            pixel_contrib: vec![0.0; descriptor.num_values()],
         }
     }
 
@@ -39,7 +39,8 @@ impl PixelContributionMap {
     /// * `path` - The path to which the image should be written.
     /// * `color_map` - The color map to use for encoding the pixel contribution.
     pub fn write_image<P: AsRef<Path>, C: ColorMap>(&self, path: P, color_map: C) -> Result<()> {
-        let mut img = RgbImage::new(self.size as u32, self.size as u32);
+        let size = self.descriptor.size() as u32;
+        let mut img = RgbImage::new(size, size);
 
         self.pixel_contrib
             .iter()
@@ -100,13 +101,60 @@ impl PixelContributionMap {
     }
 }
 
+/// The descriptor for the pixel contribution map.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct PixelContribColorMapDescriptor {
+    /// The size of the quadratic pixel contribution map.
+    map_size: usize,
+}
+
+impl PixelContribColorMapDescriptor {
+    /// Creates a new descriptor for the pixel contribution map.
+    ///
+    /// # Arguments
+    /// * `size` - The size of the quadratic pixel contribution map.
+    pub fn new(size: usize) -> Self {
+        Self { map_size: size }
+    }
+
+    /// Returns the size of the quadratic pixel contribution map.
+    #[inline]
+    pub fn size(&self) -> usize {
+        self.map_size
+    }
+
+    /// Returns total number of values for the pixel contribution map.
+    #[inline]
+    pub fn num_values(&self) -> usize {
+        self.map_size * self.map_size
+    }
+
+    /// Returns the camera direction vector for the given index.
+    ///
+    /// # Arguments
+    /// * `index` - The index of the pixel contribution value.
+    pub fn camera_dir_from_index(&self, index: usize) -> Vec3 {
+        let u = index % self.map_size;
+        let v = index / self.map_size;
+
+        let uv = Vec2::new(
+            u as f32 / self.map_size as f32,
+            v as f32 / self.map_size as f32,
+        );
+
+        decode_octahedron_normal(uv)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_serialization() {
-        let mut pixel_contrib = PixelContributionMap::new(16);
+        let descriptor = PixelContribColorMapDescriptor::new(16);
+
+        let mut pixel_contrib = PixelContributionMap::new(descriptor);
         pixel_contrib
             .pixel_contrib
             .iter_mut()
@@ -120,7 +168,7 @@ mod test {
 
         let pixel_contrib2 = PixelContributionMap::from_reader(&mut buf.as_slice()).unwrap();
 
-        assert_eq!(pixel_contrib.size, pixel_contrib2.size);
+        assert_eq!(pixel_contrib.descriptor, pixel_contrib2.descriptor);
         assert_eq!(pixel_contrib.pixel_contrib, pixel_contrib2.pixel_contrib);
     }
 }

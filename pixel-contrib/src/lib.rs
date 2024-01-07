@@ -12,14 +12,11 @@ pub use view::*;
 use std::sync::{Arc, Mutex};
 
 use log::info;
-use nalgebra_glm::Vec2;
 use rasterizer::{
     clamp, Histogram, RenderOptions, RenderStats, Renderer, RendererGeometry, Scene, StatsNode,
     StatsNodeTrait,
 };
 use rayon::prelude::*;
-
-use crate::octahedron::decode_octahedron_normal;
 
 /// The options for the camera configuration.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -98,6 +95,7 @@ where
 
     let contrib_map_size = options.contrib_map_size;
     let render_options = options.render_options.clone();
+    let descriptor = PixelContribColorMapDescriptor::new(contrib_map_size);
 
     info!(
         "Computing pixel contribution map for {}x{} pixels",
@@ -113,10 +111,8 @@ where
 
     let mtx_render_stats = Arc::new(Mutex::new(RenderStats::default()));
     let renderer: ThreadLocal<Arc<Mutex<R>>> = ThreadLocal::new();
-    let progress = Arc::new(Mutex::new(progress::Progress::new(
-        contrib_map_size * contrib_map_size,
-    )));
-    let mut pixel_contrib = PixelContributionMap::new(contrib_map_size);
+    let progress = Arc::new(Mutex::new(progress::Progress::new(descriptor.num_values())));
+    let mut pixel_contrib = PixelContributionMap::new(descriptor);
 
     pixel_contrib
         .pixel_contrib
@@ -136,22 +132,10 @@ where
                 .lock()
                 .unwrap();
 
-            // compute normalized pixel position
-            let (x, y) = (
-                (index % contrib_map_size) as f32,
-                (index / contrib_map_size) as f32,
-            );
-
-            let (u, v) = (
-                (x + 0.5) / contrib_map_size as f32,
-                (y + 0.5) / contrib_map_size as f32,
-            );
-
-            // determine the view direction for the current pixel
-            let dir = decode_octahedron_normal(Vec2::new(u, v));
+            let camera_dir = descriptor.camera_dir_from_index(index);
 
             // create view based on the view direction
-            let view = View::new_from_sphere(&bounding_sphere, options.camera_config, dir);
+            let view = View::new_from_sphere(&bounding_sphere, options.camera_config, camera_dir);
 
             // render the scene
             let renderer: &mut R = &mut renderer;

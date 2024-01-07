@@ -79,8 +79,8 @@ impl Sphere {
         };
         self.texture.generate(&TextureData {
             descriptor: TextureDescriptor {
-                width: pixel_contribution.size as u32,
-                height: pixel_contribution.size as u32,
+                width: pixel_contribution.descriptor.size() as u32,
+                height: pixel_contribution.descriptor.size() as u32,
                 format: render_lib::PixelFormat::Gray,
                 filtering: Filtering::Linear,
                 datatype: DataType::Float,
