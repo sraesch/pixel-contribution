@@ -159,8 +159,7 @@ impl EventHandler for ViewerImpl {
                         let (w, h, values) = FrameBuffer::get_depth_buffer_values();
                         info!("Read depth buffer with size {}x{}", w, h);
 
-                        let num_pixels = values.iter().filter(|v| **v != 1.0).count();
-                        info!("Number of filled pixels: {}", num_pixels);
+                        let num_rasterized_pixels = values.iter().filter(|v| **v != 1.0).count();
 
                         let (model_view, fovy, height) = {
                             let data = self.camera.get_data();
@@ -189,11 +188,28 @@ impl EventHandler for ViewerImpl {
                         ) * height
                             / 2.0;
 
+                        let predicted_sphere_pixels =
+                            sphere_radius * sphere_radius * std::f32::consts::PI;
+
+                        let cam_dir =
+                            nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
+
+                        let pixel_contrib_value =
+                            self.pixel_contrib.get_pixel_contrib_for_camera_dir(cam_dir);
+
+                        let num_pixels =
+                            (pixel_contrib_value * predicted_sphere_pixels).round() as usize;
+
+                        info!(" -- Prediction --");
+                        info!("Number of rasterized pixels: {}", num_rasterized_pixels);
+                        info!("Camera direction: {:?}", cam_dir);
                         info!("Bounding sphere radius on screen: {}", sphere_radius);
                         info!(
                             "Predicted number of filled pixels: {}",
-                            sphere_radius * sphere_radius * std::f32::consts::PI
+                            predicted_sphere_pixels
                         );
+                        info!("Pixel contribution value: {}", pixel_contrib_value);
+                        info!("Predicted number of filled pixels: {}", num_pixels);
                     }
                 }
                 _ => {}

@@ -103,6 +103,15 @@ impl PixelContributionMap {
 
         Ok(pixel_contrib)
     }
+
+    /// Returns the pixel contribution for the given camera direction vector.
+    ///
+    /// # Arguments
+    /// * `dir` - The camera direction vector to the object.
+    pub fn get_pixel_contrib_for_camera_dir(&self, dir: Vec3) -> f32 {
+        let index = self.descriptor.index_from_camera_dir(dir);
+        self.pixel_contrib[index]
+    }
 }
 
 /// The descriptor for the pixel contribution map.
