@@ -37,9 +37,9 @@ pub struct Options {
     #[arg(short, long)]
     pub model_file: PathBuf,
 
-    /// The image file for the pixel contribution map.
-    #[arg(short, long)]
-    pub image_file: PathBuf,
+    /// The binary pixel contribution file.
+    #[arg(short = 'i', long)]
+    pub pixel_contribution: PathBuf,
 }
 
 impl Options {
@@ -48,6 +48,6 @@ impl Options {
         info!("Log-Level: {:?}", self.log_level);
 
         info!("model_file: {:?}", self.model_file);
-        info!("image_file: {:?}", self.image_file);
+        info!("pixel_contribution: {:?}", self.pixel_contribution);
     }
 }
