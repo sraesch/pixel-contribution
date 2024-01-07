@@ -37,7 +37,7 @@ struct ViewerImpl {
 impl ViewerImpl {
     pub fn new(options: Options) -> Result<Self> {
         // load pixel contribution
-        let pixel_contrib = PixelContribution::read_binary(options.pixel_contribution.as_path())?;
+        let pixel_contrib = PixelContribution::from_file(options.pixel_contribution.as_path())?;
 
         Ok(Self {
             options,

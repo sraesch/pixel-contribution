@@ -94,7 +94,7 @@ fn execute_pixel_contribution_program(options: &Options, scene: &Scene) -> Resul
     }
 
     info!("Write binary file...");
-    contrib_map.write_binary("contrib_map.bin")?;
+    contrib_map.write_file("contrib_map.bin")?;
     info!("Write binary file...DONE");
 
     let duration = start.elapsed();

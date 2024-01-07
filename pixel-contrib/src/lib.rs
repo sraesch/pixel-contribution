@@ -21,6 +21,7 @@ use rasterizer::{
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 
 use crate::octahedron::decode_octahedron_normal;
 
@@ -328,10 +329,18 @@ impl PixelContribution {
     ///
     /// # Arguments
     /// * `path` - The path to which the pixel contribution should be written.
-    pub fn write_binary<P: AsRef<Path>>(&self, path: P) -> error::Result<()> {
+    pub fn write_file<P: AsRef<Path>>(&self, path: P) -> error::Result<()> {
         let file = std::fs::File::create(path)?;
 
-        bincode::serialize_into(file, self)
+        self.write_writer(&mut std::io::BufWriter::new(file))
+    }
+
+    /// Writes the pixel contribution map to the given writer as binary file.
+    ///
+    /// # Arguments
+    /// * `writer` - The writer to which the pixel contribution should be written.
+    pub fn write_writer<W: Write>(&self, writer: &mut W) -> error::Result<()> {
+        bincode::serialize_into(writer, self)
             .map_err(|e| Error::Internal(format!("Failed to encode: {}", e)))?;
 
         Ok(())
@@ -341,10 +350,18 @@ impl PixelContribution {
     ///
     /// # Arguments
     /// * `path` - The path from which the pixel contribution should be read.
-    pub fn read_binary<P: AsRef<Path>>(path: P) -> error::Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> error::Result<Self> {
         let file = std::fs::File::open(path)?;
 
-        let pixel_contrib = bincode::deserialize_from(file)
+        Self::from_reader(&mut std::io::BufReader::new(file))
+    }
+
+    /// Reads the pixel contribution map from the given reader.
+    ///
+    /// # Arguments
+    /// * `reader` - The reader from which the pixel contribution should be read.
+    pub fn from_reader<R: std::io::Read>(reader: &mut R) -> error::Result<Self> {
+        let pixel_contrib = bincode::deserialize_from(reader)
             .map_err(|e| Error::IO(format!("Failed to decode: {}", e)))?;
 
         Ok(pixel_contrib)
