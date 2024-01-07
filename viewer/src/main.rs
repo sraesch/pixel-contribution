@@ -9,7 +9,7 @@ use cad_model::CADModel;
 use clap::Parser;
 use log::{debug, error, info, trace, LevelFilter};
 use math::extract_camera_position;
-use nalgebra_glm::{Mat4, Vec3, Vec4};
+use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
@@ -171,8 +171,19 @@ impl EventHandler for ViewerImpl {
                             )
                         };
 
+                        let cam_pos = match extract_camera_position(&model_view) {
+                            Some(cam_pos) => {
+                                debug!("Camera position: {:?}", cam_pos);
+                                cam_pos
+                            }
+                            None => {
+                                error!("Failed to extract camera position from model view matrix");
+                                return;
+                            }
+                        };
+
                         let sphere_radius = estimate_bounding_sphere_radius_on_screen(
-                            &model_view,
+                            &cam_pos,
                             fovy,
                             &self.bounding_sphere,
                         ) * height
@@ -196,16 +207,15 @@ impl EventHandler for ViewerImpl {
 /// Note: This does not take the aspect ratio or the frustum into account.
 ///
 /// # Arguments
-/// * `model_view` - The model view matrix.
+/// * `cam_pos` - The position of the camera.
 /// * `fovy` - The field of view in y-direction in radians.
 /// * `sphere` - The bounding sphere.
 fn estimate_bounding_sphere_radius_on_screen(
-    model_view: &Mat4,
+    cam_pos: &Vec3,
     fovy: f32,
     sphere: &BoundingSphere,
 ) -> f32 {
-    let cam_pos = extract_camera_position(model_view);
-    let d = nalgebra_glm::distance(&cam_pos, &sphere.center);
+    let d = nalgebra_glm::distance(cam_pos, &sphere.center);
 
     // project the ray that tangentially touches the sphere onto the plane that is 'd' units away
     // from the camera
