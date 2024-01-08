@@ -4,7 +4,7 @@ mod bounding_sphere;
 pub use aabb::*;
 pub use bounding_sphere::*;
 
-use nalgebra_glm::{inverse, vec4_to_vec3, Mat4, Vec3, Vec4};
+use nalgebra_glm::{vec4_to_vec3, Mat4, Vec3, Vec4};
 
 /// Transforms the given vec3 with the given homogenous transformation matrix and returns the
 /// transformed vec3.
@@ -20,11 +20,13 @@ pub fn transform_vec3(t: &Mat4, p: &Vec3) -> Vec3 {
 }
 
 /// Extracts the camera position from the given modelview matrix.
+/// Returns None, if the modelview matrix is not invertible.
 ///
 /// # Arguments
 /// * `modelview` - The modelview matrix from which the camera position should be extracted.
 #[inline]
-pub fn extract_camera_position(modelview: &Mat4) -> Vec3 {
-    let inv_modelview = inverse(modelview);
-    vec4_to_vec3(&inv_modelview.column(3).into())
+pub fn extract_camera_position(modelview: &Mat4) -> Option<Vec3> {
+    modelview
+        .try_inverse()
+        .map(|m| vec4_to_vec3(&m.column(3).into()))
 }

@@ -9,11 +9,11 @@ use cad_model::CADModel;
 use clap::Parser;
 use log::{debug, error, info, trace, LevelFilter};
 use math::extract_camera_position;
-use nalgebra_glm::{Mat4, Vec3, Vec4};
+use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::PixelContribution;
+use pixel_contrib::PixelContributionMap;
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
@@ -31,13 +31,13 @@ struct ViewerImpl {
 
     sphere_transparency: f32,
 
-    pixel_contrib: PixelContribution,
+    pixel_contrib: PixelContributionMap,
 }
 
 impl ViewerImpl {
     pub fn new(options: Options) -> Result<Self> {
         // load pixel contribution
-        let pixel_contrib = PixelContribution::from_file(options.pixel_contribution.as_path())?;
+        let pixel_contrib = PixelContributionMap::from_file(options.pixel_contribution.as_path())?;
 
         Ok(Self {
             options,
@@ -159,8 +159,7 @@ impl EventHandler for ViewerImpl {
                         let (w, h, values) = FrameBuffer::get_depth_buffer_values();
                         info!("Read depth buffer with size {}x{}", w, h);
 
-                        let num_pixels = values.iter().filter(|v| **v != 1.0).count();
-                        info!("Number of filled pixels: {}", num_pixels);
+                        let num_rasterized_pixels = values.iter().filter(|v| **v != 1.0).count();
 
                         let (model_view, fovy, height) = {
                             let data = self.camera.get_data();
@@ -171,18 +170,46 @@ impl EventHandler for ViewerImpl {
                             )
                         };
 
+                        let cam_pos = match extract_camera_position(&model_view) {
+                            Some(cam_pos) => {
+                                debug!("Camera position: {:?}", cam_pos);
+                                cam_pos
+                            }
+                            None => {
+                                error!("Failed to extract camera position from model view matrix");
+                                return;
+                            }
+                        };
+
                         let sphere_radius = estimate_bounding_sphere_radius_on_screen(
-                            &model_view,
+                            &cam_pos,
                             fovy,
                             &self.bounding_sphere,
                         ) * height
                             / 2.0;
 
+                        let predicted_sphere_pixels =
+                            sphere_radius * sphere_radius * std::f32::consts::PI;
+
+                        let cam_dir =
+                            nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
+
+                        let pixel_contrib_value =
+                            self.pixel_contrib.get_pixel_contrib_for_camera_dir(cam_dir);
+
+                        let num_pixels =
+                            (pixel_contrib_value * predicted_sphere_pixels).round() as usize;
+
+                        info!(" -- Prediction --");
+                        info!("Number of rasterized pixels: {}", num_rasterized_pixels);
+                        info!("Camera direction: {:?}", cam_dir);
                         info!("Bounding sphere radius on screen: {}", sphere_radius);
                         info!(
                             "Predicted number of filled pixels: {}",
-                            sphere_radius * sphere_radius * std::f32::consts::PI
+                            predicted_sphere_pixels
                         );
+                        info!("Pixel contribution value: {}", pixel_contrib_value);
+                        info!("Predicted number of filled pixels: {}", num_pixels);
                     }
                 }
                 _ => {}
@@ -196,16 +223,15 @@ impl EventHandler for ViewerImpl {
 /// Note: This does not take the aspect ratio or the frustum into account.
 ///
 /// # Arguments
-/// * `model_view` - The model view matrix.
+/// * `cam_pos` - The position of the camera.
 /// * `fovy` - The field of view in y-direction in radians.
 /// * `sphere` - The bounding sphere.
 fn estimate_bounding_sphere_radius_on_screen(
-    model_view: &Mat4,
+    cam_pos: &Vec3,
     fovy: f32,
     sphere: &BoundingSphere,
 ) -> f32 {
-    let cam_pos = extract_camera_position(model_view);
-    let d = nalgebra_glm::distance(&cam_pos, &sphere.center);
+    let d = nalgebra_glm::distance(cam_pos, &sphere.center);
 
     // project the ray that tangentially touches the sphere onto the plane that is 'd' units away
     // from the camera
