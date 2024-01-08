@@ -4,7 +4,7 @@ mod bounding_sphere;
 pub use aabb::*;
 pub use bounding_sphere::*;
 
-use nalgebra_glm::{inverse, vec4_to_vec3, Mat4, Vec3, Vec4};
+use nalgebra_glm::{vec4_to_vec3, Mat4, Vec3, Vec4};
 
 /// Transforms the given vec3 with the given homogenous transformation matrix and returns the
 /// transformed vec3.
