@@ -13,6 +13,9 @@ use crate::{
     ColorMap, Error, Result,
 };
 
+const PIXEL_CONTRIBUTION_MAP_VERSION: u32 = 1;
+const PIXEL_CONTRIBUTION_MAP_IDENTIFIER: [u8; 4] = *b"PCMP";
+
 /// The resulting pixel contribution for all possible views.
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct PixelContributionMap {
@@ -77,8 +80,12 @@ impl PixelContributionMap {
     /// # Arguments
     /// * `writer` - The writer to which the pixel contribution should be written.
     pub fn write_writer<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let header: PixelContributionMapHeader = Default::default();
+
+        writer.write_all(header.as_bytes())?;
+
         bincode::serialize_into(writer, self)
-            .map_err(|e| Error::Internal(format!("Failed to encode: {}", e)))?;
+            .map_err(|e| Error::IO(format!("Failed to encode: {}", e)))?;
 
         Ok(())
     }
@@ -98,6 +105,11 @@ impl PixelContributionMap {
     /// # Arguments
     /// * `reader` - The reader from which the pixel contribution should be read.
     pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let mut header: PixelContributionMapHeader = Default::default();
+        reader.read_exact(header.as_bytes_mut())?;
+
+        header.check()?;
+
         let pixel_contrib = bincode::deserialize_from(reader)
             .map_err(|e| Error::IO(format!("Failed to decode: {}", e)))?;
 
@@ -169,6 +181,63 @@ impl PixelContribColorMapDescriptor {
     }
 }
 
+/// The header for the pixel contribution map used for serialization.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct PixelContributionMapHeader {
+    /// The identifier for the pixel contribution map file.
+    identifier: [u8; 4],
+
+    /// The version of the pixel contribution map file.
+    version: u32,
+}
+
+impl Default for PixelContributionMapHeader {
+    fn default() -> Self {
+        Self {
+            identifier: PIXEL_CONTRIBUTION_MAP_IDENTIFIER,
+            version: PIXEL_CONTRIBUTION_MAP_VERSION,
+        }
+    }
+}
+
+impl PixelContributionMapHeader {
+    /// Checks if the given header is valid.
+    ///
+    /// # Arguments
+    /// * `header` - The header to check.
+    pub fn check(&self) -> Result<()> {
+        if self.identifier != PIXEL_CONTRIBUTION_MAP_IDENTIFIER {
+            return Err(Error::IO("Invalid identifier".to_string()));
+        }
+
+        if self.version != PIXEL_CONTRIBUTION_MAP_VERSION {
+            return Err(Error::IO("Invalid version".to_string()));
+        }
+
+        Ok(())
+    }
+
+    /// Returns the header as byte array.
+    pub fn as_bytes(&self) -> &[u8] {
+        unsafe {
+            std::slice::from_raw_parts(
+                self as *const PixelContributionMapHeader as *const u8,
+                std::mem::size_of::<PixelContributionMapHeader>(),
+            )
+        }
+    }
+
+    /// Returns the header as mutable byte array.
+    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self as *mut PixelContributionMapHeader as *mut u8,
+                std::mem::size_of::<PixelContributionMapHeader>(),
+            )
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -193,6 +262,12 @@ mod test {
 
         assert_eq!(pixel_contrib.descriptor, pixel_contrib2.descriptor);
         assert_eq!(pixel_contrib.pixel_contrib, pixel_contrib2.pixel_contrib);
+    }
+
+    #[test]
+    fn test_serialization2() {
+        let random_bytes = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0xFF];
+        assert!(PixelContributionMap::from_reader(&mut &random_bytes[..]).is_err());
     }
 
     #[test]
