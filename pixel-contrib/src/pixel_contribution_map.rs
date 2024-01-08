@@ -127,10 +127,14 @@ impl PixelContributionMap {
 }
 
 /// The descriptor for the pixel contribution map.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct PixelContribColorMapDescriptor {
     /// The size of the quadratic pixel contribution map.
     map_size: usize,
+
+    /// The camera angle for the pixel contribution map. The angle is in radians.
+    /// A value of 0 means that the camera is orthographic.
+    camera_angle: f32,
 }
 
 impl PixelContribColorMapDescriptor {
@@ -138,14 +142,27 @@ impl PixelContribColorMapDescriptor {
     ///
     /// # Arguments
     /// * `size` - The size of the quadratic pixel contribution map.
-    pub fn new(size: usize) -> Self {
-        Self { map_size: size }
+    /// * `camera_angle` - The camera angle for the pixel contribution map.
+    ///                    The angle is in radians. A value of 0 means that the camera is
+    ///                    orthographic.
+    pub fn new(size: usize, camera_angle: f32) -> Self {
+        Self {
+            map_size: size,
+            camera_angle,
+        }
     }
 
     /// Returns the size of the quadratic pixel contribution map.
     #[inline]
     pub fn size(&self) -> usize {
         self.map_size
+    }
+
+    /// Returns the camera angle for the pixel contribution map.
+    /// The angle is in radians. A value of 0 means that the camera is orthographic.
+    #[inline]
+    pub fn camera_angle(&self) -> f32 {
+        self.camera_angle
     }
 
     /// Returns total number of values for the pixel contribution map.
@@ -244,7 +261,8 @@ mod test {
 
     #[test]
     fn test_serialization() {
-        let descriptor = PixelContribColorMapDescriptor::new(16);
+        let angle = 90.0f32.to_radians();
+        let descriptor = PixelContribColorMapDescriptor::new(16, angle);
 
         let mut pixel_contrib = PixelContributionMap::new(descriptor);
         pixel_contrib
@@ -275,7 +293,7 @@ mod test {
         let map_sizes = [16, 32, 64, 128, 256, 512, 1024];
 
         for map_size in map_sizes {
-            let descriptor = PixelContribColorMapDescriptor::new(map_size);
+            let descriptor = PixelContribColorMapDescriptor::new(map_size, 0f32);
 
             for i in 0..descriptor.num_values() {
                 let dir = descriptor.camera_dir_from_index(i);

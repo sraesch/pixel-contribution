@@ -93,9 +93,14 @@ where
         std::f32::consts::PI * r * r
     };
 
+    let angle = match options.camera_config {
+        CameraConfig::Orthographic => 0f32,
+        CameraConfig::Perspective { fovy } => fovy,
+    };
+
     let contrib_map_size = options.contrib_map_size;
     let render_options = options.render_options.clone();
-    let descriptor = PixelContribColorMapDescriptor::new(contrib_map_size);
+    let descriptor = PixelContribColorMapDescriptor::new(contrib_map_size, angle);
 
     info!(
         "Computing pixel contribution map for {}x{} pixels",
