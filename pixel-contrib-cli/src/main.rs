@@ -7,7 +7,8 @@ use clap::Parser;
 use log::{error, info, LevelFilter};
 use options::{Options, PixelContribColorMap};
 use pixel_contrib::{
-    compute_contribution_map, GrayScaleColorMap, PixelContributionOptions, TurboColorMap,
+    compute_contribution_map, CameraConfig, GrayScaleColorMap, PixelContributionMaps,
+    PixelContributionOptions, TurboColorMap,
 };
 use rasterizer::{simple_rasterizer::SimpleRasterizer, Scene, Stats, StatsNodeTrait};
 
@@ -59,47 +60,64 @@ fn execute_pixel_contribution_program(options: &Options, scene: &Scene) -> Resul
 
     let render_options = options.get_render_options();
 
-    let camera_config = if options.camera > 0f32 {
-        pixel_contrib::CameraConfig::Perspective {
-            fovy: options.camera,
-        }
-    } else {
-        pixel_contrib::CameraConfig::Orthographic
-    };
+    let camera_configs: Vec<CameraConfig> = options
+        .camera
+        .iter()
+        .map(|fovy| {
+            if *fovy > 0f32 {
+                pixel_contrib::CameraConfig::Perspective { fovy: *fovy }
+            } else {
+                pixel_contrib::CameraConfig::Orthographic
+            }
+        })
+        .collect();
 
-    info!("Camera config: {}", camera_config.to_string());
-
-    let contrib_options = PixelContributionOptions {
-        render_options: render_options.clone(),
-        num_threads: options.num_threads,
-        contrib_map_size: options.size_pixel_contrib,
-        camera_config,
-    };
-
-    let mut render_stats = Default::default();
-    let contrib_map = compute_contribution_map::<SimpleRasterizer>(
-        scene,
-        Stats::root(),
-        &contrib_options,
-        &mut render_stats,
-    );
-
-    match options.color_map {
-        PixelContribColorMap::Grayscale => {
-            contrib_map.write_image("contrib_map.png", GrayScaleColorMap::new())?;
-        }
-        PixelContribColorMap::Rgb => {
-            contrib_map.write_image("contrib_map.png", TurboColorMap::new())?;
-        }
+    info!("Camera configs");
+    for camera_config in &camera_configs {
+        info!("  {}", camera_config.to_string());
     }
 
-    info!("Write binary file...");
-    contrib_map.write_file("contrib_map.bin")?;
-    info!("Write binary file...DONE");
+    let mut render_stats = Default::default();
+
+    let mut contrib_maps = PixelContributionMaps::new();
+    for camera_config in camera_configs.iter() {
+        let contrib_option = PixelContributionOptions {
+            render_options: render_options.clone(),
+
+            num_threads: options.num_threads,
+            contrib_map_size: options.size_pixel_contrib,
+            camera_config: *camera_config,
+        };
+
+        let contrib_map = compute_contribution_map::<SimpleRasterizer>(
+            scene,
+            Stats::root(),
+            &contrib_option,
+            &mut render_stats,
+        );
+
+        let image_file_name = format!("contrib_map_angle_{}.png", camera_config.angle());
+
+        match options.color_map {
+            PixelContribColorMap::Grayscale => {
+                info!("Write contribution images Grayscale '{}'", image_file_name);
+                contrib_map.write_image(&image_file_name, GrayScaleColorMap::new())?;
+            }
+            PixelContribColorMap::Rgb => {
+                info!("Write contribution images RGB '{}'", image_file_name);
+                contrib_map.write_image(&image_file_name, TurboColorMap::new())?;
+            }
+        }
+
+        contrib_maps.add_map(contrib_map);
+    }
 
     let duration = start.elapsed();
     let secs = duration.as_secs_f64();
     print_stats(secs, render_options.frame_size, num_triangles);
+
+    info!("Write contribution maps");
+    contrib_maps.write_file("contrib_maps.bin")?;
 
     Ok(())
 }

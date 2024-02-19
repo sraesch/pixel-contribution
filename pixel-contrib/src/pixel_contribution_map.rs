@@ -16,53 +16,42 @@ use crate::{
 const PIXEL_CONTRIBUTION_MAP_VERSION: u32 = 1;
 const PIXEL_CONTRIBUTION_MAP_IDENTIFIER: [u8; 4] = *b"PCMP";
 
-/// The resulting pixel contribution for all possible views.
+/// The pixel contribution maps for different configurations
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
-pub struct PixelContributionMap {
-    pub descriptor: PixelContribColorMapDescriptor,
-
-    /// The 2D map for the pixel contribution of each view. Each position on the map
-    /// represents a view. The normalized position (u,v) is mapped to a normal using octahedral
-    /// projection. The normal then defines the camera view direction onto the object.
-    /// The pixel contribution values are in the range [0, 1].
-    pub pixel_contrib: Vec<f32>,
+pub struct PixelContributionMaps {
+    maps: Vec<PixelContributionMap>,
 }
 
-impl PixelContributionMap {
-    /// Creates a new pixel contribution map for the given size with 0 contribution.
-    ///
-    /// # Arguments
-    /// * `descriptor` - The descriptor for the pixel contribution map.
-    pub fn new(descriptor: PixelContribColorMapDescriptor) -> Self {
-        Self {
-            descriptor,
-            pixel_contrib: vec![0.0; descriptor.num_values()],
-        }
+impl Default for PixelContributionMaps {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PixelContributionMaps {
+    pub fn new() -> Self {
+        Self { maps: Vec::new() }
     }
 
-    /// Writes the pixel contribution map to the given path as image.
+    /// Creates a new pixel contribution maps object from the given maps.
     ///
     /// # Arguments
-    /// * `path` - The path to which the image should be written.
-    /// * `color_map` - The color map to use for encoding the pixel contribution.
-    pub fn write_image<P: AsRef<Path>, C: ColorMap>(&self, path: P, color_map: C) -> Result<()> {
-        let size = self.descriptor.size() as u32;
-        let mut img = RgbImage::new(size, size);
+    /// * `maps` - The pixel contribution maps to use.
+    pub fn from_maps(maps: Vec<PixelContributionMap>) -> Self {
+        Self { maps }
+    }
 
-        self.pixel_contrib
-            .iter()
-            .zip(img.pixels_mut())
-            .for_each(|(p, pixel)| {
-                let c = color_map.map(*p as f64);
+    /// Adds a new pixel contribution map.
+    ///
+    /// # Arguments
+    /// * `map` - The pixel contribution map to add.
+    pub fn add_map(&mut self, map: PixelContributionMap) {
+        self.maps.push(map);
+    }
 
-                pixel[0] = c.0;
-                pixel[1] = c.1;
-                pixel[2] = c.2;
-            });
-
-        img.save(path)?;
-
-        Ok(())
+    /// Returns a reference to the pixel contribution maps.
+    pub fn get_maps(&self) -> &[PixelContributionMap] {
+        &self.maps
     }
 
     /// Writes the pixel contribution map to the given path as binary file.
@@ -114,6 +103,56 @@ impl PixelContributionMap {
             .map_err(|e| Error::IO(format!("Failed to decode: {}", e)))?;
 
         Ok(pixel_contrib)
+    }
+}
+
+/// The resulting pixel contribution for all possible views.
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+pub struct PixelContributionMap {
+    pub descriptor: PixelContribColorMapDescriptor,
+
+    /// The 2D map for the pixel contribution of each view. Each position on the map
+    /// represents a view. The normalized position (u,v) is mapped to a normal using octahedral
+    /// projection. The normal then defines the camera view direction onto the object.
+    /// The pixel contribution values are in the range [0, 1].
+    pub pixel_contrib: Vec<f32>,
+}
+
+impl PixelContributionMap {
+    /// Creates a new pixel contribution map for the given size with 0 contribution.
+    ///
+    /// # Arguments
+    /// * `descriptor` - The descriptor for the pixel contribution map.
+    pub fn new(descriptor: PixelContribColorMapDescriptor) -> Self {
+        Self {
+            descriptor,
+            pixel_contrib: vec![0.0; descriptor.num_values()],
+        }
+    }
+
+    /// Writes the pixel contribution map to the given path as image.
+    ///
+    /// # Arguments
+    /// * `path` - The path to which the image should be written.
+    /// * `color_map` - The color map to use for encoding the pixel contribution.
+    pub fn write_image<P: AsRef<Path>, C: ColorMap>(&self, path: P, color_map: C) -> Result<()> {
+        let size = self.descriptor.size() as u32;
+        let mut img = RgbImage::new(size, size);
+
+        self.pixel_contrib
+            .iter()
+            .zip(img.pixels_mut())
+            .for_each(|(p, pixel)| {
+                let c = color_map.map(*p as f64);
+
+                pixel[0] = c.0;
+                pixel[1] = c.1;
+                pixel[2] = c.2;
+            });
+
+        img.save(path)?;
+
+        Ok(())
     }
 
     /// Returns the pixel contribution for the given camera direction vector.
@@ -273,11 +312,17 @@ mod test {
                 *p = i as f32 / 255.0;
             });
 
+        let pixel_contribs = PixelContributionMaps {
+            maps: vec![pixel_contrib.clone()],
+        };
+
         let mut buf = Vec::new();
-        pixel_contrib.write_writer(&mut buf).unwrap();
+        pixel_contribs.write_writer(&mut buf).unwrap();
 
-        let pixel_contrib2 = PixelContributionMap::from_reader(&mut buf.as_slice()).unwrap();
+        let pixel_contribs2 = PixelContributionMaps::from_reader(&mut buf.as_slice()).unwrap();
+        assert_eq!(pixel_contribs2.get_maps().len(), 1);
 
+        let pixel_contrib2 = &pixel_contribs2.get_maps()[0];
         assert_eq!(pixel_contrib.descriptor, pixel_contrib2.descriptor);
         assert_eq!(pixel_contrib.pixel_contrib, pixel_contrib2.pixel_contrib);
     }
@@ -285,7 +330,7 @@ mod test {
     #[test]
     fn test_serialization2() {
         let random_bytes = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0xFF];
-        assert!(PixelContributionMap::from_reader(&mut &random_bytes[..]).is_err());
+        assert!(PixelContributionMaps::from_reader(&mut &random_bytes[..]).is_err());
     }
 
     #[test]

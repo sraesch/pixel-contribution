@@ -13,7 +13,7 @@ use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::PixelContributionMap;
+use pixel_contrib::{PixelContributionMap, PixelContributionMaps};
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
@@ -37,7 +37,30 @@ struct ViewerImpl {
 impl ViewerImpl {
     pub fn new(options: Options) -> Result<Self> {
         // load pixel contribution
-        let pixel_contrib = PixelContributionMap::from_file(options.pixel_contribution.as_path())?;
+        info!(
+            "Loading pixel contribution maps from {}...",
+            options.pixel_contribution.display()
+        );
+        let pixel_contrib_maps =
+            PixelContributionMaps::from_file(options.pixel_contribution.as_path())?;
+        info!(
+            "Loading pixel contribution maps from {}...DONE",
+            options.pixel_contribution.display()
+        );
+
+        info!(
+            "Found {} pixel contribution maps",
+            pixel_contrib_maps.get_maps().len()
+        );
+        for pixel_contrib in pixel_contrib_maps.get_maps() {
+            info!("Map Size: {}", pixel_contrib.descriptor.size());
+            info!(
+                "Camera Angle: {} degree",
+                pixel_contrib.descriptor.camera_angle().to_degrees()
+            );
+        }
+
+        let pixel_contrib = pixel_contrib_maps.get_maps().first().unwrap();
 
         Ok(Self {
             options,
@@ -46,7 +69,7 @@ impl ViewerImpl {
             cad_model: None,
             bounding_sphere: BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 1.0)),
             sphere_transparency: 0.5,
-            pixel_contrib,
+            pixel_contrib: pixel_contrib.clone(),
         })
     }
 }
@@ -201,14 +224,18 @@ impl EventHandler for ViewerImpl {
                             (pixel_contrib_value * predicted_sphere_pixels).round() as usize;
 
                         info!(" -- Prediction --");
-                        info!("Number of rasterized pixels: {}", num_rasterized_pixels);
                         info!("Camera direction: {:?}", cam_dir);
                         info!("Bounding sphere radius on screen: {}", sphere_radius);
+                        info!("Pixel contribution value: {}", pixel_contrib_value);
+
                         info!(
-                            "Predicted number of filled pixels: {}",
+                            "Number of actually rasterized pixels: {}",
+                            num_rasterized_pixels
+                        );
+                        info!(
+                            "Predicted number of filled pixels (Bounding Sphere): {}",
                             predicted_sphere_pixels
                         );
-                        info!("Pixel contribution value: {}", pixel_contrib_value);
                         info!("Predicted number of filled pixels: {}", num_pixels);
                     }
                 }

@@ -31,6 +31,18 @@ pub enum CameraConfig {
     },
 }
 
+impl CameraConfig {
+    /// Returns the angle of the camera configuration in radians.
+    /// For orthographic cameras, this is 0.
+    #[inline]
+    pub fn angle(&self) -> f32 {
+        match self {
+            CameraConfig::Orthographic => 0f32,
+            CameraConfig::Perspective { fovy } => *fovy,
+        }
+    }
+}
+
 impl ToString for CameraConfig {
     fn to_string(&self) -> String {
         match self {
@@ -53,7 +65,7 @@ pub struct PixelContributionOptions {
     /// The size of the quadratic pixel contribution map.
     pub contrib_map_size: usize,
 
-    /// The field of view in y-direction in radians.
+    /// The camera config to be used for calculating the pixel contribution.
     pub camera_config: CameraConfig,
 }
 
