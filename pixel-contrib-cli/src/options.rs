@@ -65,7 +65,7 @@ pub struct Options {
     pub color_map: PixelContribColorMap,
 
     /// The list of field of views for the camera in radians. 0 means orthographic camera.
-    #[arg(short = 'a', long, value_parser, num_args = 0.., default_value = "1.5708")]
+    #[arg(short = 'a', long, value_parser, num_args = 1.., default_value = "1.5708", value_delimiter = ',')]
     pub camera: Vec<f32>,
 }
 
