@@ -2,6 +2,7 @@ mod cad_model;
 mod geometry;
 mod logging;
 mod options;
+mod screenspace;
 mod sphere;
 
 use std::error::Error;
@@ -21,6 +22,8 @@ use render_lib::{
     EventHandler, FaceCulling, FrameBuffer, Key, MouseButton,
 };
 use sphere::Sphere;
+
+use crate::screenspace::estimate_screenspace_for_bounding_sphere;
 
 struct ViewerImpl {
     options: Options,
@@ -219,11 +222,11 @@ impl EventHandler for ViewerImpl {
 
                         let num_rasterized_pixels = values.iter().filter(|v| **v != 1.0).count();
 
-                        let (model_view, fovy, height) = {
+                        let (model_view, projection_matrix, height) = {
                             let data = self.camera.get_data();
                             (
                                 data.get_model_matrix(),
-                                data.get_fovy(),
+                                data.get_projection_matrix(),
                                 data.get_window_size().1 as f32,
                             )
                         };
@@ -239,15 +242,13 @@ impl EventHandler for ViewerImpl {
                             }
                         };
 
-                        let sphere_radius = estimate_bounding_sphere_radius_on_screen(
-                            &cam_pos,
-                            fovy,
+                        let predicted_sphere_pixels = estimate_screenspace_for_bounding_sphere(
+                            &model_view,
+                            &projection_matrix,
                             &self.bounding_sphere,
-                        ) * height
-                            / 2.0;
-
-                        let predicted_sphere_pixels =
-                            sphere_radius * sphere_radius * std::f32::consts::PI;
+                            height,
+                        )
+                        .unwrap();
 
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
@@ -265,7 +266,6 @@ impl EventHandler for ViewerImpl {
 
                         info!(" -- Prediction --");
                         info!("Camera direction: {:?}", cam_dir);
-                        info!("Bounding sphere radius on screen: {}", sphere_radius);
                         info!(
                             "Pixel contribution factor from map: {}",
                             pixel_contrib_value
@@ -290,33 +290,6 @@ impl EventHandler for ViewerImpl {
             }
         }
     }
-}
-
-/// Estimates the radius of the bounding sphere on the screen in the range [0, 1].
-/// A value of 1 means that the sphere fills the screen completely.
-/// Note: This does not take the aspect ratio or the frustum into account.
-///
-/// # Arguments
-/// * `cam_pos` - The position of the camera.
-/// * `fovy` - The field of view in y-direction in radians.
-/// * `sphere` - The bounding sphere.
-fn estimate_bounding_sphere_radius_on_screen(
-    cam_pos: &Vec3,
-    fovy: f32,
-    sphere: &BoundingSphere,
-) -> f32 {
-    let d = nalgebra_glm::distance(cam_pos, &sphere.center);
-
-    // project the ray that tangentially touches the sphere onto the plane that is 'd' units away
-    // from the camera
-    let phi = (sphere.radius / d).asin();
-    let projected_radius = phi.tan() * d;
-
-    // now compute half the length of the side of the frustum at the distance 'd'
-    let r_capital = (fovy / 2.0).tan() * d;
-
-    // use this radius to estimate how much the screen is being filled by the sphere
-    projected_radius / r_capital
 }
 
 /// Estimates the angle of the camera based on the bounding sphere.
