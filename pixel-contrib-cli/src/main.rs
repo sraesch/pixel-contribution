@@ -1,6 +1,6 @@
 mod options;
 
-use std::time::Instant;
+use std::{io::Write, time::Instant};
 
 use anyhow::Result;
 use clap::Parser;
@@ -20,7 +20,20 @@ fn parse_args() -> Result<Options> {
 
 /// Initializes the program logging
 fn initialize_logging(filter: LevelFilter) {
-    simple_logging::log_to(std::io::stdout(), filter);
+    env_logger::Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{}:{} {} [{}] - {}",
+                record.file().unwrap_or("unknown"),
+                record.line().unwrap_or(0),
+                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .filter_level(filter)
+        .init();
 }
 
 /// Prints statistics about the overall computation.
