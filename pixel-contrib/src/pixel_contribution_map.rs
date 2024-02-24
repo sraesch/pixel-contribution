@@ -13,6 +13,99 @@ use crate::{
     ColorMap, Error, Result,
 };
 
+const PIXEL_CONTRIBUTION_MAP_VERSION: u32 = 1;
+const PIXEL_CONTRIBUTION_MAP_IDENTIFIER: [u8; 4] = *b"PCMP";
+
+/// The pixel contribution maps for different configurations
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
+pub struct PixelContributionMaps {
+    maps: Vec<PixelContributionMap>,
+}
+
+impl Default for PixelContributionMaps {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PixelContributionMaps {
+    pub fn new() -> Self {
+        Self { maps: Vec::new() }
+    }
+
+    /// Creates a new pixel contribution maps object from the given maps.
+    ///
+    /// # Arguments
+    /// * `maps` - The pixel contribution maps to use.
+    pub fn from_maps(maps: Vec<PixelContributionMap>) -> Self {
+        Self { maps }
+    }
+
+    /// Adds a new pixel contribution map.
+    ///
+    /// # Arguments
+    /// * `map` - The pixel contribution map to add.
+    pub fn add_map(&mut self, map: PixelContributionMap) {
+        self.maps.push(map);
+    }
+
+    /// Returns a reference to the pixel contribution maps.
+    pub fn get_maps(&self) -> &[PixelContributionMap] {
+        &self.maps
+    }
+
+    /// Writes the pixel contribution map to the given path as binary file.
+    ///
+    /// # Arguments
+    /// * `path` - The path to which the pixel contribution should be written.
+    pub fn write_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let file = std::fs::File::create(path)?;
+
+        self.write_writer(&mut BufWriter::new(file))
+    }
+
+    /// Writes the pixel contribution map to the given writer as binary file.
+    ///
+    /// # Arguments
+    /// * `writer` - The writer to which the pixel contribution should be written.
+    pub fn write_writer<W: Write>(&self, writer: &mut W) -> Result<()> {
+        let header: PixelContributionMapHeader = Default::default();
+
+        writer.write_all(header.as_bytes())?;
+
+        bincode::serialize_into(writer, self)
+            .map_err(|e| Error::IO(format!("Failed to encode: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Reads the pixel contribution map from the given path.
+    ///
+    /// # Arguments
+    /// * `path` - The path from which the pixel contribution should be read.
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let file = std::fs::File::open(path)?;
+
+        Self::from_reader(&mut BufReader::new(file))
+    }
+
+    /// Reads the pixel contribution map from the given reader.
+    ///
+    /// # Arguments
+    /// * `reader` - The reader from which the pixel contribution should be read.
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self> {
+        let mut header: PixelContributionMapHeader = Default::default();
+        reader.read_exact(header.as_bytes_mut())?;
+
+        header.check()?;
+
+        let pixel_contrib = bincode::deserialize_from(reader)
+            .map_err(|e| Error::IO(format!("Failed to decode: {}", e)))?;
+
+        Ok(pixel_contrib)
+    }
+}
+
 /// The resulting pixel contribution for all possible views.
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct PixelContributionMap {
@@ -62,48 +155,6 @@ impl PixelContributionMap {
         Ok(())
     }
 
-    /// Writes the pixel contribution map to the given path as binary file.
-    ///
-    /// # Arguments
-    /// * `path` - The path to which the pixel contribution should be written.
-    pub fn write_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let file = std::fs::File::create(path)?;
-
-        self.write_writer(&mut BufWriter::new(file))
-    }
-
-    /// Writes the pixel contribution map to the given writer as binary file.
-    ///
-    /// # Arguments
-    /// * `writer` - The writer to which the pixel contribution should be written.
-    pub fn write_writer<W: Write>(&self, writer: &mut W) -> Result<()> {
-        bincode::serialize_into(writer, self)
-            .map_err(|e| Error::Internal(format!("Failed to encode: {}", e)))?;
-
-        Ok(())
-    }
-
-    /// Reads the pixel contribution map from the given path.
-    ///
-    /// # Arguments
-    /// * `path` - The path from which the pixel contribution should be read.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let file = std::fs::File::open(path)?;
-
-        Self::from_reader(&mut BufReader::new(file))
-    }
-
-    /// Reads the pixel contribution map from the given reader.
-    ///
-    /// # Arguments
-    /// * `reader` - The reader from which the pixel contribution should be read.
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let pixel_contrib = bincode::deserialize_from(reader)
-            .map_err(|e| Error::IO(format!("Failed to decode: {}", e)))?;
-
-        Ok(pixel_contrib)
-    }
-
     /// Returns the pixel contribution for the given camera direction vector.
     ///
     /// # Arguments
@@ -115,10 +166,14 @@ impl PixelContributionMap {
 }
 
 /// The descriptor for the pixel contribution map.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct PixelContribColorMapDescriptor {
     /// The size of the quadratic pixel contribution map.
     map_size: usize,
+
+    /// The camera angle for the pixel contribution map. The angle is in radians.
+    /// A value of 0 means that the camera is orthographic.
+    camera_angle: f32,
 }
 
 impl PixelContribColorMapDescriptor {
@@ -126,14 +181,27 @@ impl PixelContribColorMapDescriptor {
     ///
     /// # Arguments
     /// * `size` - The size of the quadratic pixel contribution map.
-    pub fn new(size: usize) -> Self {
-        Self { map_size: size }
+    /// * `camera_angle` - The camera angle for the pixel contribution map.
+    ///                    The angle is in radians. A value of 0 means that the camera is
+    ///                    orthographic.
+    pub fn new(size: usize, camera_angle: f32) -> Self {
+        Self {
+            map_size: size,
+            camera_angle,
+        }
     }
 
     /// Returns the size of the quadratic pixel contribution map.
     #[inline]
     pub fn size(&self) -> usize {
         self.map_size
+    }
+
+    /// Returns the camera angle for the pixel contribution map.
+    /// The angle is in radians. A value of 0 means that the camera is orthographic.
+    #[inline]
+    pub fn camera_angle(&self) -> f32 {
+        self.camera_angle
     }
 
     /// Returns total number of values for the pixel contribution map.
@@ -169,13 +237,71 @@ impl PixelContribColorMapDescriptor {
     }
 }
 
+/// The header for the pixel contribution map used for serialization.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct PixelContributionMapHeader {
+    /// The identifier for the pixel contribution map file.
+    identifier: [u8; 4],
+
+    /// The version of the pixel contribution map file.
+    version: u32,
+}
+
+impl Default for PixelContributionMapHeader {
+    fn default() -> Self {
+        Self {
+            identifier: PIXEL_CONTRIBUTION_MAP_IDENTIFIER,
+            version: PIXEL_CONTRIBUTION_MAP_VERSION,
+        }
+    }
+}
+
+impl PixelContributionMapHeader {
+    /// Checks if the given header is valid.
+    ///
+    /// # Arguments
+    /// * `header` - The header to check.
+    pub fn check(&self) -> Result<()> {
+        if self.identifier != PIXEL_CONTRIBUTION_MAP_IDENTIFIER {
+            return Err(Error::IO("Invalid identifier".to_string()));
+        }
+
+        if self.version != PIXEL_CONTRIBUTION_MAP_VERSION {
+            return Err(Error::IO("Invalid version".to_string()));
+        }
+
+        Ok(())
+    }
+
+    /// Returns the header as byte array.
+    pub fn as_bytes(&self) -> &[u8] {
+        unsafe {
+            std::slice::from_raw_parts(
+                self as *const PixelContributionMapHeader as *const u8,
+                std::mem::size_of::<PixelContributionMapHeader>(),
+            )
+        }
+    }
+
+    /// Returns the header as mutable byte array.
+    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self as *mut PixelContributionMapHeader as *mut u8,
+                std::mem::size_of::<PixelContributionMapHeader>(),
+            )
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_serialization() {
-        let descriptor = PixelContribColorMapDescriptor::new(16);
+        let angle = 90.0f32.to_radians();
+        let descriptor = PixelContribColorMapDescriptor::new(16, angle);
 
         let mut pixel_contrib = PixelContributionMap::new(descriptor);
         pixel_contrib
@@ -186,13 +312,25 @@ mod test {
                 *p = i as f32 / 255.0;
             });
 
+        let pixel_contribs = PixelContributionMaps {
+            maps: vec![pixel_contrib.clone()],
+        };
+
         let mut buf = Vec::new();
-        pixel_contrib.write_writer(&mut buf).unwrap();
+        pixel_contribs.write_writer(&mut buf).unwrap();
 
-        let pixel_contrib2 = PixelContributionMap::from_reader(&mut buf.as_slice()).unwrap();
+        let pixel_contribs2 = PixelContributionMaps::from_reader(&mut buf.as_slice()).unwrap();
+        assert_eq!(pixel_contribs2.get_maps().len(), 1);
 
+        let pixel_contrib2 = &pixel_contribs2.get_maps()[0];
         assert_eq!(pixel_contrib.descriptor, pixel_contrib2.descriptor);
         assert_eq!(pixel_contrib.pixel_contrib, pixel_contrib2.pixel_contrib);
+    }
+
+    #[test]
+    fn test_serialization2() {
+        let random_bytes = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0xFF];
+        assert!(PixelContributionMaps::from_reader(&mut &random_bytes[..]).is_err());
     }
 
     #[test]
@@ -200,7 +338,7 @@ mod test {
         let map_sizes = [16, 32, 64, 128, 256, 512, 1024];
 
         for map_size in map_sizes {
-            let descriptor = PixelContribColorMapDescriptor::new(map_size);
+            let descriptor = PixelContribColorMapDescriptor::new(map_size, 0f32);
 
             for i in 0..descriptor.num_values() {
                 let dir = descriptor.camera_dir_from_index(i);

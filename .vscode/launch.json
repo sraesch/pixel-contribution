@@ -21,9 +21,11 @@
             },
             "args": [
                 "-i",
-                "${workspaceFolder}/test_data/models/sphere.off",
+                "${workspaceFolder}/test_data/models/plane.glb",
                 "-p",
-                "32"
+                "32",
+                "-a",
+                "0,0.5,1.5708"
             ],
             "cwd": "${workspaceFolder}"
         },

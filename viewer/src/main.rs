@@ -1,5 +1,6 @@
 mod cad_model;
 mod geometry;
+mod logging;
 mod options;
 mod sphere;
 
@@ -7,13 +8,13 @@ use std::error::Error;
 
 use cad_model::CADModel;
 use clap::Parser;
-use log::{debug, error, info, trace, LevelFilter};
+use log::{debug, error, info, trace};
 use math::extract_camera_position;
 use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::PixelContributionMap;
+use pixel_contrib::PixelContributionMaps;
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
@@ -30,14 +31,25 @@ struct ViewerImpl {
     bounding_sphere: BoundingSphere,
 
     sphere_transparency: f32,
+    current_contrib_map_index: usize,
 
-    pixel_contrib: PixelContributionMap,
+    pixel_contrib_maps: PixelContributionMaps,
 }
 
 impl ViewerImpl {
     pub fn new(options: Options) -> Result<Self> {
         // load pixel contribution
-        let pixel_contrib = PixelContributionMap::from_file(options.pixel_contribution.as_path())?;
+        info!(
+            "Loading pixel contribution maps from {}...",
+            options.pixel_contribution.display()
+        );
+        let pixel_contrib_maps =
+            PixelContributionMaps::from_file(options.pixel_contribution.as_path())?;
+        info!(
+            "Loading pixel contribution maps from {}...DONE",
+            options.pixel_contribution.display()
+        );
+        Self::print_pixel_contribution_maps_info(&pixel_contrib_maps);
 
         Ok(Self {
             options,
@@ -46,8 +58,36 @@ impl ViewerImpl {
             cad_model: None,
             bounding_sphere: BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 1.0)),
             sphere_transparency: 0.5,
-            pixel_contrib,
+            current_contrib_map_index: 0,
+            pixel_contrib_maps,
         })
+    }
+
+    /// Prints the pixel contribution maps information to the log.
+    ///
+    /// # Arguments
+    /// * `p` - The pixel contribution maps.
+    fn print_pixel_contribution_maps_info(p: &PixelContributionMaps) {
+        info!("Found {} pixel contribution maps", p.get_maps().len());
+
+        let size = p
+            .get_maps()
+            .first()
+            .map(|p| p.descriptor.size())
+            .unwrap_or_default();
+        info!("Map Size: {}", size);
+
+        let mut supported_angles: String = String::new();
+        p.get_maps().iter().for_each(|p| {
+            let angle = p.descriptor.camera_angle().to_degrees();
+            supported_angles = if supported_angles.is_empty() {
+                format!("{}", angle)
+            } else {
+                format!("{}, {}", supported_angles, angle)
+            };
+        });
+
+        info!("Supported Angles (in degree): {}", supported_angles);
     }
 }
 
@@ -55,7 +95,7 @@ impl EventHandler for ViewerImpl {
     fn setup(&mut self, width: u32, height: u32) -> Result<(), Box<dyn Error>> {
         info!("setup...");
 
-        self.sphere.setup(&self.pixel_contrib)?;
+        self.sphere.setup(&self.pixel_contrib_maps)?;
 
         self.cad_model = match CADModel::new(&self.options.model_file) {
             Ok(cad_model) => {
@@ -114,7 +154,11 @@ impl EventHandler for ViewerImpl {
         FrameBuffer::set_blending(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         configure_culling(FaceCulling::Back);
         if self.sphere_transparency > 0.0 {
-            self.sphere.render(&combined_mat, self.sphere_transparency);
+            self.sphere.render(
+                &combined_mat,
+                self.sphere_transparency,
+                self.current_contrib_map_index,
+            );
         }
         configure_culling(FaceCulling::None);
         FrameBuffer::disable_blend();
@@ -152,6 +196,20 @@ impl EventHandler for ViewerImpl {
                 "s" => {
                     if pressed {
                         self.sphere_transparency = (self.sphere_transparency - 0.1).max(0.0);
+                    }
+                }
+                "m" => {
+                    if pressed {
+                        self.current_contrib_map_index = (self.current_contrib_map_index + 1)
+                            % self.pixel_contrib_maps.get_maps().len();
+
+                        let contrib_map =
+                            &self.pixel_contrib_maps.get_maps()[self.current_contrib_map_index];
+                        info!(
+                            "Switched to pixel contribution map (i={}, angle={:?})",
+                            self.current_contrib_map_index,
+                            contrib_map.descriptor.camera_angle().to_degrees()
+                        );
                     }
                 }
                 "c" => {
@@ -194,21 +252,37 @@ impl EventHandler for ViewerImpl {
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
 
+                        let pixel_contrib =
+                            &self.pixel_contrib_maps.get_maps()[self.current_contrib_map_index];
                         let pixel_contrib_value =
-                            self.pixel_contrib.get_pixel_contrib_for_camera_dir(cam_dir);
+                            pixel_contrib.get_pixel_contrib_for_camera_dir(cam_dir);
 
                         let num_pixels =
                             (pixel_contrib_value * predicted_sphere_pixels).round() as usize;
 
+                        let estimated_cam_angle =
+                            estimate_camera_angle(&cam_pos, &self.bounding_sphere);
+
                         info!(" -- Prediction --");
-                        info!("Number of rasterized pixels: {}", num_rasterized_pixels);
                         info!("Camera direction: {:?}", cam_dir);
                         info!("Bounding sphere radius on screen: {}", sphere_radius);
                         info!(
-                            "Predicted number of filled pixels: {}",
+                            "Pixel contribution factor from map: {}",
+                            pixel_contrib_value
+                        );
+                        info!(
+                            "Estimated camera angle: {}",
+                            estimated_cam_angle.to_degrees()
+                        );
+
+                        info!(
+                            "Number of actually rasterized pixels (Framebuffer): {}",
+                            num_rasterized_pixels
+                        );
+                        info!(
+                            "Predicted number of filled pixels (Bounding Sphere): {}",
                             predicted_sphere_pixels
                         );
-                        info!("Pixel contribution value: {}", pixel_contrib_value);
                         info!("Predicted number of filled pixels: {}", num_pixels);
                     }
                 }
@@ -245,24 +319,26 @@ fn estimate_bounding_sphere_radius_on_screen(
     projected_radius / r_capital
 }
 
+/// Estimates the angle of the camera based on the bounding sphere.
+///
+/// # Arguments
+/// * `cam_pos` - The position of the camera.
+/// * `sphere` - The bounding sphere.
+fn estimate_camera_angle(cam_pos: &Vec3, sphere: &BoundingSphere) -> f32 {
+    let d = nalgebra_glm::distance(cam_pos, &sphere.center);
+    (sphere.radius / d).asin() * 2f32
+}
+
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
 fn parse_args() -> Result<Options> {
     let options = Options::parse();
     Ok(options)
 }
 
-/// Initializes the program logging
-///
-/// # Arguments
-/// * `filter` - The log level filter.
-fn initialize_logging(filter: LevelFilter) {
-    env_logger::builder().filter_level(filter).init();
-}
-
 /// Runs the viewer program.
 fn run_program() -> Result<()> {
     let options = parse_args()?;
-    initialize_logging(options.log_level.into());
+    logging::initialize_logging(options.log_level.into());
 
     options.dump_to_log();
 
