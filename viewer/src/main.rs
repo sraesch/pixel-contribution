@@ -1,5 +1,6 @@
 mod cad_model;
 mod geometry;
+mod logging;
 mod options;
 mod sphere;
 
@@ -7,7 +8,7 @@ use std::error::Error;
 
 use cad_model::CADModel;
 use clap::Parser;
-use log::{debug, error, info, trace, LevelFilter};
+use log::{debug, error, info, trace};
 use math::extract_camera_position;
 use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
@@ -314,18 +315,10 @@ fn parse_args() -> Result<Options> {
     Ok(options)
 }
 
-/// Initializes the program logging
-///
-/// # Arguments
-/// * `filter` - The log level filter.
-fn initialize_logging(filter: LevelFilter) {
-    env_logger::builder().filter_level(filter).init();
-}
-
 /// Runs the viewer program.
 fn run_program() -> Result<()> {
     let options = parse_args()?;
-    initialize_logging(options.log_level.into());
+    logging::initialize_logging(options.log_level.into());
 
     options.dump_to_log();
 
