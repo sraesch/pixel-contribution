@@ -47,18 +47,7 @@ impl ViewerImpl {
             "Loading pixel contribution maps from {}...DONE",
             options.pixel_contribution.display()
         );
-
-        info!(
-            "Found {} pixel contribution maps",
-            pixel_contrib_maps.get_maps().len()
-        );
-        for pixel_contrib in pixel_contrib_maps.get_maps() {
-            info!("Map Size: {}", pixel_contrib.descriptor.size());
-            info!(
-                "Camera Angle: {} degree",
-                pixel_contrib.descriptor.camera_angle().to_degrees()
-            );
-        }
+        Self::print_pixel_contribution_maps_info(&pixel_contrib_maps);
 
         let pixel_contrib = pixel_contrib_maps.get_maps().first().unwrap();
 
@@ -71,6 +60,33 @@ impl ViewerImpl {
             sphere_transparency: 0.5,
             pixel_contrib: pixel_contrib.clone(),
         })
+    }
+
+    /// Prints the pixel contribution maps information to the log.
+    ///
+    /// # Arguments
+    /// * `p` - The pixel contribution maps.
+    fn print_pixel_contribution_maps_info(p: &PixelContributionMaps) {
+        info!("Found {} pixel contribution maps", p.get_maps().len());
+
+        let size = p
+            .get_maps()
+            .first()
+            .map(|p| p.descriptor.size())
+            .unwrap_or_default();
+        info!("Map Size: {}", size);
+
+        let mut supported_angles: String = String::new();
+        p.get_maps().iter().for_each(|p| {
+            let angle = p.descriptor.camera_angle().to_degrees();
+            supported_angles = if supported_angles.is_empty() {
+                format!("{}", angle)
+            } else {
+                format!("{}, {}", supported_angles, angle)
+            };
+        });
+
+        info!("Supported Angles (in degree): {}", supported_angles);
     }
 }
 
@@ -223,13 +239,23 @@ impl EventHandler for ViewerImpl {
                         let num_pixels =
                             (pixel_contrib_value * predicted_sphere_pixels).round() as usize;
 
+                        let estimated_cam_angle =
+                            estimate_camera_angle(&cam_pos, &self.bounding_sphere);
+
                         info!(" -- Prediction --");
                         info!("Camera direction: {:?}", cam_dir);
                         info!("Bounding sphere radius on screen: {}", sphere_radius);
-                        info!("Pixel contribution value: {}", pixel_contrib_value);
+                        info!(
+                            "Pixel contribution factor from map: {}",
+                            pixel_contrib_value
+                        );
+                        info!(
+                            "Estimated camera angle: {}",
+                            estimated_cam_angle.to_degrees()
+                        );
 
                         info!(
-                            "Number of actually rasterized pixels: {}",
+                            "Number of actually rasterized pixels (Framebuffer): {}",
                             num_rasterized_pixels
                         );
                         info!(
@@ -270,6 +296,16 @@ fn estimate_bounding_sphere_radius_on_screen(
 
     // use this radius to estimate how much the screen is being filled by the sphere
     projected_radius / r_capital
+}
+
+/// Estimates the angle of the camera based on the bounding sphere.
+///
+/// # Arguments
+/// * `cam_pos` - The position of the camera.
+/// * `sphere` - The bounding sphere.
+fn estimate_camera_angle(cam_pos: &Vec3, sphere: &BoundingSphere) -> f32 {
+    let d = nalgebra_glm::distance(cam_pos, &sphere.center);
+    (sphere.radius / d).atan() * 2f32
 }
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
