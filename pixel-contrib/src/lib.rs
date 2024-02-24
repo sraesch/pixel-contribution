@@ -87,10 +87,10 @@ where
 {
     let _t = stats.register_timing();
 
-    // initialize thread pool for rayon
-    rayon::ThreadPoolBuilder::new()
+    // initialize thread pool for rayon if the thread pool is not already initialized
+    let thread_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(options.num_threads)
-        .build_global()
+        .build()
         .unwrap();
 
     // initialize render stats to 0
@@ -129,38 +129,44 @@ where
     let mtx_render_stats = Arc::new(Mutex::new(RenderStats::default()));
     let renderer: ThreadLocal<Arc<Mutex<R>>> = ThreadLocal::new();
     let progress = Arc::new(Mutex::new(progress::Progress::new(descriptor.num_values())));
-    let mut pixel_contrib = PixelContributionMap::new(descriptor);
 
-    pixel_contrib
-        .pixel_contrib
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(index, p)| {
-            progress.lock().unwrap().update();
+    let pixel_contrib = thread_pool.install(|| {
+        let mut pixel_contrib = PixelContributionMap::new(descriptor);
 
-            // create renderer if not already done
-            let mut renderer = renderer
-                .get_or(|| {
-                    let mut r = R::new(stats.clone());
-                    r.initialize(render_options.clone()).unwrap();
+        pixel_contrib
+            .pixel_contrib
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(index, p)| {
+                progress.lock().unwrap().update();
 
-                    Arc::new(Mutex::new(r))
-                })
-                .lock()
-                .unwrap();
+                // create renderer if not already done
+                let mut renderer = renderer
+                    .get_or(|| {
+                        let mut r = R::new(stats.clone());
+                        r.initialize(render_options.clone()).unwrap();
 
-            let camera_dir = descriptor.camera_dir_from_index(index);
+                        Arc::new(Mutex::new(r))
+                    })
+                    .lock()
+                    .unwrap();
 
-            // create view based on the view direction
-            let view = View::new_from_sphere(&bounding_sphere, options.camera_config, camera_dir);
+                let camera_dir = descriptor.camera_dir_from_index(index);
 
-            // render the scene
-            let renderer: &mut R = &mut renderer;
-            let num_pixels_filled =
-                count_number_of_filled_pixel(renderer, &view, &geo, mtx_render_stats.clone());
+                // create view based on the view direction
+                let view =
+                    View::new_from_sphere(&bounding_sphere, options.camera_config, camera_dir);
 
-            *p = num_pixels_filled as f32 / max_num_pixels_filled;
-        });
+                // render the scene
+                let renderer: &mut R = &mut renderer;
+                let num_pixels_filled =
+                    count_number_of_filled_pixel(renderer, &view, &geo, mtx_render_stats.clone());
+
+                *p = num_pixels_filled as f32 / max_num_pixels_filled;
+            });
+
+        pixel_contrib
+    });
 
     *render_stats = mtx_render_stats.lock().unwrap().clone();
 
