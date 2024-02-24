@@ -14,7 +14,7 @@ use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::{PixelContributionMap, PixelContributionMaps};
+use pixel_contrib::PixelContributionMaps;
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
@@ -31,8 +31,9 @@ struct ViewerImpl {
     bounding_sphere: BoundingSphere,
 
     sphere_transparency: f32,
+    current_contrib_map_index: usize,
 
-    pixel_contrib: PixelContributionMap,
+    pixel_contrib_maps: PixelContributionMaps,
 }
 
 impl ViewerImpl {
@@ -50,8 +51,6 @@ impl ViewerImpl {
         );
         Self::print_pixel_contribution_maps_info(&pixel_contrib_maps);
 
-        let pixel_contrib = pixel_contrib_maps.get_maps().first().unwrap();
-
         Ok(Self {
             options,
             camera: Default::default(),
@@ -59,7 +58,8 @@ impl ViewerImpl {
             cad_model: None,
             bounding_sphere: BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 1.0)),
             sphere_transparency: 0.5,
-            pixel_contrib: pixel_contrib.clone(),
+            current_contrib_map_index: 0,
+            pixel_contrib_maps,
         })
     }
 
@@ -95,7 +95,7 @@ impl EventHandler for ViewerImpl {
     fn setup(&mut self, width: u32, height: u32) -> Result<(), Box<dyn Error>> {
         info!("setup...");
 
-        self.sphere.setup(&self.pixel_contrib)?;
+        self.sphere.setup(&self.pixel_contrib_maps)?;
 
         self.cad_model = match CADModel::new(&self.options.model_file) {
             Ok(cad_model) => {
@@ -154,7 +154,11 @@ impl EventHandler for ViewerImpl {
         FrameBuffer::set_blending(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
         configure_culling(FaceCulling::Back);
         if self.sphere_transparency > 0.0 {
-            self.sphere.render(&combined_mat, self.sphere_transparency);
+            self.sphere.render(
+                &combined_mat,
+                self.sphere_transparency,
+                self.current_contrib_map_index,
+            );
         }
         configure_culling(FaceCulling::None);
         FrameBuffer::disable_blend();
@@ -192,6 +196,20 @@ impl EventHandler for ViewerImpl {
                 "s" => {
                     if pressed {
                         self.sphere_transparency = (self.sphere_transparency - 0.1).max(0.0);
+                    }
+                }
+                "m" => {
+                    if pressed {
+                        self.current_contrib_map_index = (self.current_contrib_map_index + 1)
+                            % self.pixel_contrib_maps.get_maps().len();
+
+                        let contrib_map =
+                            &self.pixel_contrib_maps.get_maps()[self.current_contrib_map_index];
+                        info!(
+                            "Switched to pixel contribution map (i={}, angle={:?})",
+                            self.current_contrib_map_index,
+                            contrib_map.descriptor.camera_angle().to_degrees()
+                        );
                     }
                 }
                 "c" => {
@@ -234,8 +252,10 @@ impl EventHandler for ViewerImpl {
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
 
+                        let pixel_contrib =
+                            &self.pixel_contrib_maps.get_maps()[self.current_contrib_map_index];
                         let pixel_contrib_value =
-                            self.pixel_contrib.get_pixel_contrib_for_camera_dir(cam_dir);
+                            pixel_contrib.get_pixel_contrib_for_camera_dir(cam_dir);
 
                         let num_pixels =
                             (pixel_contrib_value * predicted_sphere_pixels).round() as usize;
@@ -306,7 +326,7 @@ fn estimate_bounding_sphere_radius_on_screen(
 /// * `sphere` - The bounding sphere.
 fn estimate_camera_angle(cam_pos: &Vec3, sphere: &BoundingSphere) -> f32 {
     let d = nalgebra_glm::distance(cam_pos, &sphere.center);
-    (sphere.radius / d).atan() * 2f32
+    (sphere.radius / d).asin() * 2f32
 }
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.
