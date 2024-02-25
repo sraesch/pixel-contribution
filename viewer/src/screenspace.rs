@@ -20,6 +20,15 @@ pub fn estimate_screenspace_for_bounding_sphere(
     // transform the sphere into view space
     sphere.center = transform_vec3(model_view, &sphere.center);
 
+    // Check special case where the camera is inside the sphere.
+    // In this case, the footprint is the entire screen.
+    if sphere.center.norm_squared() <= sphere.radius * sphere.radius {
+        let aspect = perspective.m22 / perspective.m11;
+        let width = height * aspect;
+
+        return Ok(width * height);
+    }
+
     // extract the field of view in y-direction from the perspective matrix
     let fovy = (1f32 / perspective.m22).atan() * 2.0;
 
