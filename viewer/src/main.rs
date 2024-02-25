@@ -23,7 +23,7 @@ use render_lib::{
 };
 use sphere::Sphere;
 
-use crate::screenspace::estimate_screenspace_for_bounding_sphere;
+use crate::screenspace::ScreenspaceEstimator;
 
 struct ViewerImpl {
     options: Options,
@@ -279,13 +279,12 @@ impl EventHandler for ViewerImpl {
                             }
                         };
 
-                        let predicted_sphere_pixels = estimate_screenspace_for_bounding_sphere(
-                            &model_view,
-                            &projection_matrix,
-                            self.bounding_sphere.clone(),
-                            height,
-                        )
-                        .unwrap();
+                        let mut estimator = ScreenspaceEstimator::default();
+                        estimator.update_camera(model_view, projection_matrix, height);
+
+                        let predicted_sphere_pixels = estimator
+                            .estimate_screenspace_for_bounding_sphere(self.bounding_sphere.clone())
+                            .unwrap();
 
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
