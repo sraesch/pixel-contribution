@@ -19,7 +19,7 @@ use pixel_contrib::PixelContributionMaps;
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
-    EventHandler, FaceCulling, FrameBuffer, Key, MouseButton,
+    EventHandler, FaceCulling, FrameBuffer, Key, MouseButton, NamedKey,
 };
 use sphere::Sphere;
 
@@ -191,6 +191,40 @@ impl EventHandler for ViewerImpl {
 
     fn keyboard_event(&mut self, key: Key, pressed: bool) {
         trace!("keyboard_event({:?}, {})", key, pressed);
+
+        if let Key::Named(name) = key {
+            match name {
+                NamedKey::ArrowLeft => {
+                    if pressed {
+                        let mut cam_pos = *self.camera.get_data_mut().get_center();
+                        cam_pos[0] -= 0.1;
+                        self.camera.get_data_mut().set_center(&cam_pos);
+                    }
+                }
+                NamedKey::ArrowRight => {
+                    if pressed {
+                        let mut cam_pos = *self.camera.get_data_mut().get_center();
+                        cam_pos[0] += 0.1;
+                        self.camera.get_data_mut().set_center(&cam_pos);
+                    }
+                }
+                NamedKey::ArrowUp => {
+                    if pressed {
+                        let mut cam_pos = *self.camera.get_data_mut().get_center();
+                        cam_pos[1] -= 0.1;
+                        self.camera.get_data_mut().set_center(&cam_pos);
+                    }
+                }
+                NamedKey::ArrowDown => {
+                    if pressed {
+                        let mut cam_pos = *self.camera.get_data_mut().get_center();
+                        cam_pos[1] += 0.1;
+                        self.camera.get_data_mut().set_center(&cam_pos);
+                    }
+                }
+                _ => {}
+            }
+        }
 
         if let Key::Character(c) = key {
             match c.as_str() {
