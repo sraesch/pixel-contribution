@@ -1,8 +1,14 @@
 mod aabb;
 mod bounding_sphere;
+mod frustum;
+mod plane;
+mod ray;
 
 pub use aabb::*;
 pub use bounding_sphere::*;
+pub use frustum::*;
+pub use plane::*;
+pub use ray::*;
 
 use nalgebra_glm::{vec4_to_vec3, Mat4, Vec3, Vec4};
 

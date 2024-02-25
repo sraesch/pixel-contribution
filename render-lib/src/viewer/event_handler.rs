@@ -1,7 +1,7 @@
 use std::error::Error;
 
 pub use winit::event::MouseButton;
-pub use winit::keyboard::Key;
+pub use winit::keyboard::{Key, NamedKey};
 
 /// The trait for a handling events during rendering.
 pub trait EventHandler {

@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'pixel-contrib-cli'",
+            "name": "Debug executable 'pixel-contrib-cli (Plane)'",
             "cargo": {
                 "args": [
                     "build",
@@ -32,29 +32,6 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'viewer' (Plane)",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=viewer",
-                    "--package=viewer"
-                ],
-                "filter": {
-                    "name": "viewer",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "-i",
-                "${workspaceFolder}/test_data/contrib_maps/plane_contrib_map.bin",
-                "-m",
-                "${workspaceFolder}/test_data/models/plane.glb"
-            ],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "Debug executable 'viewer' (2 Boxes)",
             "cargo": {
                 "args": [
@@ -72,6 +49,31 @@
                 "${workspaceFolder}/test_data/contrib_maps/2_boxes_contrib_map.bin",
                 "-m",
                 "${workspaceFolder}/test_data/models/2Boxes.glb"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'viewer' (Plane)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=viewer",
+                    "--package=viewer"
+                ],
+                "filter": {
+                    "name": "viewer",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-i",
+                "${workspaceFolder}/test_data/contrib_maps/plane_contrib_map.bin",
+                "-m",
+                "${workspaceFolder}/test_data/models/plane.glb",
+                "-v",
+                "90"
             ],
             "cwd": "${workspaceFolder}"
         }

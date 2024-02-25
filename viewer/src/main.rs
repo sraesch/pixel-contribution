@@ -2,6 +2,7 @@ mod cad_model;
 mod geometry;
 mod logging;
 mod options;
+mod screenspace;
 mod sphere;
 
 use std::error::Error;
@@ -18,9 +19,11 @@ use pixel_contrib::PixelContributionMaps;
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
-    EventHandler, FaceCulling, FrameBuffer, Key, MouseButton,
+    EventHandler, FaceCulling, FrameBuffer, Key, MouseButton, NamedKey,
 };
 use sphere::Sphere;
+
+use crate::screenspace::ScreenspaceEstimator;
 
 struct ViewerImpl {
     options: Options,
@@ -51,9 +54,12 @@ impl ViewerImpl {
         );
         Self::print_pixel_contribution_maps_info(&pixel_contrib_maps);
 
+        let mut camera = Camera::default();
+        camera.get_data_mut().set_fovy(options.fovy.to_radians());
+
         Ok(Self {
             options,
-            camera: Default::default(),
+            camera,
             sphere: Default::default(),
             cad_model: None,
             bounding_sphere: BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 1.0)),
@@ -186,6 +192,40 @@ impl EventHandler for ViewerImpl {
     fn keyboard_event(&mut self, key: Key, pressed: bool) {
         trace!("keyboard_event({:?}, {})", key, pressed);
 
+        if let Key::Named(name) = key {
+            match name {
+                NamedKey::ArrowLeft => {
+                    if pressed {
+                        let mut cam_pos = *self.camera.get_data_mut().get_center();
+                        cam_pos[0] -= 0.1;
+                        self.camera.get_data_mut().set_center(&cam_pos);
+                    }
+                }
+                NamedKey::ArrowRight => {
+                    if pressed {
+                        let mut cam_pos = *self.camera.get_data_mut().get_center();
+                        cam_pos[0] += 0.1;
+                        self.camera.get_data_mut().set_center(&cam_pos);
+                    }
+                }
+                NamedKey::ArrowUp => {
+                    if pressed {
+                        let mut cam_pos = *self.camera.get_data_mut().get_center();
+                        cam_pos[1] -= 0.1;
+                        self.camera.get_data_mut().set_center(&cam_pos);
+                    }
+                }
+                NamedKey::ArrowDown => {
+                    if pressed {
+                        let mut cam_pos = *self.camera.get_data_mut().get_center();
+                        cam_pos[1] += 0.1;
+                        self.camera.get_data_mut().set_center(&cam_pos);
+                    }
+                }
+                _ => {}
+            }
+        }
+
         if let Key::Character(c) = key {
             match c.as_str() {
                 "w" => {
@@ -219,11 +259,11 @@ impl EventHandler for ViewerImpl {
 
                         let num_rasterized_pixels = values.iter().filter(|v| **v != 1.0).count();
 
-                        let (model_view, fovy, height) = {
+                        let (model_view, projection_matrix, height) = {
                             let data = self.camera.get_data();
                             (
                                 data.get_model_matrix(),
-                                data.get_fovy(),
+                                data.get_projection_matrix(),
                                 data.get_window_size().1 as f32,
                             )
                         };
@@ -239,15 +279,12 @@ impl EventHandler for ViewerImpl {
                             }
                         };
 
-                        let sphere_radius = estimate_bounding_sphere_radius_on_screen(
-                            &cam_pos,
-                            fovy,
-                            &self.bounding_sphere,
-                        ) * height
-                            / 2.0;
+                        let mut estimator = ScreenspaceEstimator::default();
+                        estimator.update_camera(model_view, projection_matrix, height);
 
-                        let predicted_sphere_pixels =
-                            sphere_radius * sphere_radius * std::f32::consts::PI;
+                        let predicted_sphere_pixels = estimator
+                            .estimate_screenspace_for_bounding_sphere(self.bounding_sphere.clone())
+                            .unwrap();
 
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
@@ -265,7 +302,6 @@ impl EventHandler for ViewerImpl {
 
                         info!(" -- Prediction --");
                         info!("Camera direction: {:?}", cam_dir);
-                        info!("Bounding sphere radius on screen: {}", sphere_radius);
                         info!(
                             "Pixel contribution factor from map: {}",
                             pixel_contrib_value
@@ -284,39 +320,16 @@ impl EventHandler for ViewerImpl {
                             predicted_sphere_pixels
                         );
                         info!("Predicted number of filled pixels: {}", num_pixels);
+                        info!(
+                            "Error: {}%",
+                            (num_pixels as f32 / num_rasterized_pixels as f32 - 1f32) * 100.0
+                        );
                     }
                 }
                 _ => {}
             }
         }
     }
-}
-
-/// Estimates the radius of the bounding sphere on the screen in the range [0, 1].
-/// A value of 1 means that the sphere fills the screen completely.
-/// Note: This does not take the aspect ratio or the frustum into account.
-///
-/// # Arguments
-/// * `cam_pos` - The position of the camera.
-/// * `fovy` - The field of view in y-direction in radians.
-/// * `sphere` - The bounding sphere.
-fn estimate_bounding_sphere_radius_on_screen(
-    cam_pos: &Vec3,
-    fovy: f32,
-    sphere: &BoundingSphere,
-) -> f32 {
-    let d = nalgebra_glm::distance(cam_pos, &sphere.center);
-
-    // project the ray that tangentially touches the sphere onto the plane that is 'd' units away
-    // from the camera
-    let phi = (sphere.radius / d).asin();
-    let projected_radius = phi.tan() * d;
-
-    // now compute half the length of the side of the frustum at the distance 'd'
-    let r_capital = (fovy / 2.0).tan() * d;
-
-    // use this radius to estimate how much the screen is being filled by the sphere
-    projected_radius / r_capital
 }
 
 /// Estimates the angle of the camera based on the bounding sphere.
