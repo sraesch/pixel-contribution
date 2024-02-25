@@ -26,6 +26,13 @@ pub struct ScreenspaceEstimator {
 
 impl Default for ScreenspaceEstimator {
     fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ScreenspaceEstimator {
+    /// Creates a new screenspace estimator.
+    pub fn new() -> Self {
         Self {
             model_view: Mat4::identity(),
             perspective: Mat4::identity(),
@@ -34,13 +41,6 @@ impl Default for ScreenspaceEstimator {
             width: 512.0,
             height: 512.0,
         }
-    }
-}
-
-impl ScreenspaceEstimator {
-    /// Creates a new screenspace estimator.
-    pub fn new() -> Self {
-        Self::default()
     }
 
     /// Updates the camera parameters for the screenspace estimator.
