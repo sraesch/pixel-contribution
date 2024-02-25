@@ -40,6 +40,10 @@ pub struct Options {
     /// The binary pixel contribution file.
     #[arg(short = 'i', long)]
     pub pixel_contribution: PathBuf,
+
+    /// The field of viw of the camera in degree.
+    #[arg(short = 'v', long, default_value_t = 60f32)]
+    pub fovy: f32,
 }
 
 impl Options {

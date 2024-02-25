@@ -54,9 +54,12 @@ impl ViewerImpl {
         );
         Self::print_pixel_contribution_maps_info(&pixel_contrib_maps);
 
+        let mut camera = Camera::default();
+        camera.get_data_mut().set_fovy(options.fovy.to_radians());
+
         Ok(Self {
             options,
-            camera: Default::default(),
+            camera,
             sphere: Default::default(),
             cad_model: None,
             bounding_sphere: BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 1.0)),
