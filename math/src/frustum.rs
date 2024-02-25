@@ -178,4 +178,146 @@ mod test {
             1f32,
         )));
     }
+
+    #[test]
+    fn test_bounding_sphere() {
+        // 90 degree in radians
+        let angle = std::f32::consts::FRAC_PI_2;
+        let proj = perspective(1f32, angle, 0.1f32, 10f32);
+
+        let f = Frustum::from_projection(&proj);
+
+        // test near- and far-plane
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, 0f32, 0f32),
+                radius: 1f32,
+            }),
+            FrustumSphereIntersection::Intersecting
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, 0f32, 0f32),
+                radius: 0.09f32,
+            }),
+            FrustumSphereIntersection::Outside
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, 0f32, -0.5f32),
+                radius: 0.09f32,
+            }),
+            FrustumSphereIntersection::Inside
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, 0f32, -11f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Outside
+        );
+
+        // test left
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new((angle / 2f32).tan() * -2f32, 0f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Intersecting
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new((angle / 2f32).tan() * -2f32 - 0.2f32, 0f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Outside
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new((angle / 2f32).tan() * -2f32 + 0.2f32, 0f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Inside
+        );
+
+        // test right
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new((angle / 2f32).tan() * 2f32, 0f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Intersecting
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new((angle / 2f32).tan() * 2f32 + 0.2f32, 0f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Outside
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new((angle / 2f32).tan() * 2f32 - 0.2f32, 0f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Inside
+        );
+
+        // test top
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, (angle / 2f32).tan() * 2f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Intersecting
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, (angle / 2f32).tan() * 2f32 + 0.2f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Outside
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, (angle / 2f32).tan() * 2f32 - 0.2f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Inside
+        );
+
+        // test bottom
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, (angle / 2f32).tan() * -2f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Intersecting
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, (angle / 2f32).tan() * -2f32 - 0.2f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Outside
+        );
+
+        assert_eq!(
+            f.test_sphere(&BoundingSphere {
+                center: Vec3::new(0f32, (angle / 2f32).tan() * -2f32 + 0.2f32, -2f32),
+                radius: 0.1f32,
+            }),
+            FrustumSphereIntersection::Inside
+        );
+    }
 }
