@@ -83,7 +83,6 @@ impl ScreenspaceEstimator {
 
         // Test the bounding sphere with the frustum
         let result = self.frustum.test_sphere(&sphere);
-        info!("Frustum test result: {:?}", result);
         if result == math::FrustumSphereIntersection::Outside {
             return Ok(0.0);
         }
