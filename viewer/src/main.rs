@@ -282,7 +282,7 @@ impl EventHandler for ViewerImpl {
                         let predicted_sphere_pixels = estimate_screenspace_for_bounding_sphere(
                             &model_view,
                             &projection_matrix,
-                            &self.bounding_sphere,
+                            self.bounding_sphere.clone(),
                             height,
                         )
                         .unwrap();
