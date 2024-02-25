@@ -169,4 +169,9 @@ impl Camera {
     pub fn get_data(&self) -> &CameraData {
         &self.data
     }
+
+    /// Returns mutable reference onto the internal camera data
+    pub fn get_data_mut(&mut self) -> &mut CameraData {
+        &mut self.data
+    }
 }
