@@ -321,6 +321,10 @@ impl EventHandler for ViewerImpl {
                             predicted_sphere_pixels
                         );
                         info!("Predicted number of filled pixels: {}", num_pixels);
+                        info!(
+                            "Error: {}%",
+                            (num_pixels as f32 / num_rasterized_pixels as f32 - 1f32) * 100.0
+                        );
                     }
                 }
                 _ => {}
