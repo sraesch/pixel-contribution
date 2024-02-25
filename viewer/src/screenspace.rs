@@ -4,7 +4,7 @@ use math::{transform_vec3, BoundingSphere};
 use nalgebra_glm::{cross, dot, Mat4, Vec3};
 
 /// Estimates the footprint in pixels on the screen for the given bounding sphere.
-/// The result is the radius of the sphere projected onto the screen in pixels.
+/// The result is the overall estimated number of pixels of sphere, projected onto the screen in pixels.
 ///
 /// # Arguments
 /// * `model_view` - The model view matrix.
@@ -17,26 +17,21 @@ pub fn estimate_screenspace_for_bounding_sphere(
     mut sphere: BoundingSphere,
     height: f32,
 ) -> Result<f32> {
-    // extract f from the perspective matrix, which is
-    // f = 1 / tan(fovy / 2)
-    let f = perspective.m22;
-    let fovy = (1f32 / f).atan() * 2.0;
-
     // transform the sphere into view space
     sphere.center = transform_vec3(model_view, &sphere.center);
+
+    // extract the field of view in y-direction from the perspective matrix
+    let fovy = (1f32 / perspective.m22).atan() * 2.0;
 
     // estimate the radius of the bounding sphere on the screen
     let radius = estimate_bounding_sphere_radius_on_screen(fovy, &sphere) * height / 2.0;
     let a = radius;
 
-    //// NEW CODE
+    // the direction of the camera in view space
     let cam_dir: Vec3 = Vec3::new(0.0, 0.0, -1.0);
 
-    // project sphere position onto the camera direction vector
-    let projected_pos = nalgebra_glm::dot(&sphere.center, &cam_dir) * cam_dir;
-
     // determine the first axis of the ellipse
-    let mut axis1 = sphere.center - projected_pos;
+    let mut axis1 = Vec3::new(sphere.center[0], sphere.center[1], 0f32);
     if axis1.norm() < 1e-6 {
         axis1 = Vec3::new(1.0, 0.0, 0.0);
     } else {
