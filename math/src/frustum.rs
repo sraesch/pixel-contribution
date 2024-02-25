@@ -1,17 +1,9 @@
 use arrayvec::ArrayVec;
 use nalgebra_glm::{transpose, Mat4, Vec3};
 
-use crate::BoundingSphere;
+use crate::{BoundingSphere, IntersectionTestResult};
 
 use super::{Aabb, Plane};
-
-/// The intersection of a frustum with a sphere.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FrustumSphereIntersection {
-    Inside,
-    Intersecting,
-    Outside,
-}
 
 /// A frustum defined by 6 planes which is usually used for modelling the camera view.
 #[derive(Debug, Clone, Copy, Default)]
@@ -72,15 +64,15 @@ impl Frustum {
     ///
     /// # Arguments
     ///* `sphere` - The sphere to be checked.
-    pub fn test_sphere(&self, sphere: &BoundingSphere) -> FrustumSphereIntersection {
-        let mut result = FrustumSphereIntersection::Inside;
+    pub fn test_sphere(&self, sphere: &BoundingSphere) -> IntersectionTestResult {
+        let mut result = IntersectionTestResult::Inside;
 
         for plane in self.planes.iter() {
             let d = plane.signed_distance(&sphere.center);
             if d <= -sphere.radius {
-                return FrustumSphereIntersection::Outside;
+                return IntersectionTestResult::Outside;
             } else if d < sphere.radius {
-                result = FrustumSphereIntersection::Intersecting;
+                result = IntersectionTestResult::Intersecting;
             }
         }
 
@@ -193,7 +185,7 @@ mod test {
                 center: Vec3::new(0f32, 0f32, 0f32),
                 radius: 1f32,
             }),
-            FrustumSphereIntersection::Intersecting
+            IntersectionTestResult::Intersecting
         );
 
         assert_eq!(
@@ -201,7 +193,7 @@ mod test {
                 center: Vec3::new(0f32, 0f32, 0f32),
                 radius: 0.09f32,
             }),
-            FrustumSphereIntersection::Outside
+            IntersectionTestResult::Outside
         );
 
         assert_eq!(
@@ -209,7 +201,7 @@ mod test {
                 center: Vec3::new(0f32, 0f32, -0.5f32),
                 radius: 0.09f32,
             }),
-            FrustumSphereIntersection::Inside
+            IntersectionTestResult::Inside
         );
 
         assert_eq!(
@@ -217,7 +209,7 @@ mod test {
                 center: Vec3::new(0f32, 0f32, -11f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Outside
+            IntersectionTestResult::Outside
         );
 
         // test left
@@ -226,7 +218,7 @@ mod test {
                 center: Vec3::new((angle / 2f32).tan() * -2f32, 0f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Intersecting
+            IntersectionTestResult::Intersecting
         );
 
         assert_eq!(
@@ -234,7 +226,7 @@ mod test {
                 center: Vec3::new((angle / 2f32).tan() * -2f32 - 0.2f32, 0f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Outside
+            IntersectionTestResult::Outside
         );
 
         assert_eq!(
@@ -242,7 +234,7 @@ mod test {
                 center: Vec3::new((angle / 2f32).tan() * -2f32 + 0.2f32, 0f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Inside
+            IntersectionTestResult::Inside
         );
 
         // test right
@@ -251,7 +243,7 @@ mod test {
                 center: Vec3::new((angle / 2f32).tan() * 2f32, 0f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Intersecting
+            IntersectionTestResult::Intersecting
         );
 
         assert_eq!(
@@ -259,7 +251,7 @@ mod test {
                 center: Vec3::new((angle / 2f32).tan() * 2f32 + 0.2f32, 0f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Outside
+            IntersectionTestResult::Outside
         );
 
         assert_eq!(
@@ -267,7 +259,7 @@ mod test {
                 center: Vec3::new((angle / 2f32).tan() * 2f32 - 0.2f32, 0f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Inside
+            IntersectionTestResult::Inside
         );
 
         // test top
@@ -276,7 +268,7 @@ mod test {
                 center: Vec3::new(0f32, (angle / 2f32).tan() * 2f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Intersecting
+            IntersectionTestResult::Intersecting
         );
 
         assert_eq!(
@@ -284,7 +276,7 @@ mod test {
                 center: Vec3::new(0f32, (angle / 2f32).tan() * 2f32 + 0.2f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Outside
+            IntersectionTestResult::Outside
         );
 
         assert_eq!(
@@ -292,7 +284,7 @@ mod test {
                 center: Vec3::new(0f32, (angle / 2f32).tan() * 2f32 - 0.2f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Inside
+            IntersectionTestResult::Inside
         );
 
         // test bottom
@@ -301,7 +293,7 @@ mod test {
                 center: Vec3::new(0f32, (angle / 2f32).tan() * -2f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Intersecting
+            IntersectionTestResult::Intersecting
         );
 
         assert_eq!(
@@ -309,7 +301,7 @@ mod test {
                 center: Vec3::new(0f32, (angle / 2f32).tan() * -2f32 - 0.2f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Outside
+            IntersectionTestResult::Outside
         );
 
         assert_eq!(
@@ -317,7 +309,7 @@ mod test {
                 center: Vec3::new(0f32, (angle / 2f32).tan() * -2f32 + 0.2f32, -2f32),
                 radius: 0.1f32,
             }),
-            FrustumSphereIntersection::Inside
+            IntersectionTestResult::Inside
         );
     }
 }

@@ -36,3 +36,16 @@ pub fn extract_camera_position(modelview: &Mat4) -> Option<Vec3> {
         .try_inverse()
         .map(|m| vec4_to_vec3(&m.column(3).into()))
 }
+
+/// The result of testing the intersection between two objects.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntersectionTestResult {
+    /// The right-hand side object is completely inside the left-hand side object.
+    Inside,
+
+    /// The right-hand side object is partially inside the left-hand side object.
+    Intersecting,
+
+    /// No Intersection at all
+    Outside,
+}

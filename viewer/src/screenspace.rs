@@ -1,7 +1,7 @@
 use anyhow::Result;
 use log::info;
-use math::{transform_vec3, BoundingSphere, Frustum};
-use nalgebra_glm::{cross, dot, Mat4, Vec3};
+use math::{transform_vec3, BoundingSphere, Frustum, IntersectionTestResult};
+use nalgebra_glm::{cross, dot, Mat4, Vec2, Vec3};
 
 /// An estimator for the footprint in pixels in the screenspace.
 pub struct ScreenspaceEstimator {
@@ -81,36 +81,54 @@ impl ScreenspaceEstimator {
             return Ok(self.width * self.height);
         }
 
-        // Test the bounding sphere with the frustum
+        // Test the bounding sphere with the frustum, i.e., check if the sphere is visible at all.
         let result = self.frustum.test_sphere(&sphere);
-        if result == math::FrustumSphereIntersection::Outside {
+        if result == IntersectionTestResult::Outside {
             return Ok(0.0);
         }
 
-        // estimate the radius of the bounding sphere on the screen
-        let radius =
-            estimate_bounding_sphere_radius_on_screen(self.fovy, &sphere) * self.height / 2.0;
-        let a = radius;
+        let ellipse_2d = self.project_sphere_onto_screen(&sphere);
+        info!("Ellipse: {:?}", ellipse_2d);
 
-        // the direction of the camera in view space
-        let cam_dir: Vec3 = Vec3::new(0.0, 0.0, -1.0);
+        let ellipse_area = ellipse_2d.area();
 
-        // determine the first axis of the ellipse
-        let mut axis1 = Vec3::new(sphere.center[0], sphere.center[1], 0f32);
+        Ok(ellipse_area)
+    }
+
+    /// Projects the given view space position onto the screen.
+    ///
+    /// # Arguments
+    /// * `view_space_pos` - The position in view space.
+    fn project_onto_screen(&self, view_space_pos: &Vec3) -> Vec2 {
+        let clip_space_pos = transform_vec3(&self.perspective, view_space_pos);
+        Vec2::new(
+            (clip_space_pos[0] + 1.0) * 0.5 * self.width,
+            (clip_space_pos[1] + 1.0) * 0.5 * self.height,
+        )
+    }
+
+    fn project_sphere_onto_screen(&self, sphere: &BoundingSphere) -> Ellipse2D {
+        let screen_center = Vec2::new(self.width, self.height) * 0.5;
+        let center = self.project_onto_screen(&sphere.center);
+
+        // determine the first axis of the 2D ellipse
+        let mut axis1 = center - screen_center;
         if axis1.norm() < 1e-6 {
-            axis1 = Vec3::new(1.0, 0.0, 0.0);
+            axis1 = Vec2::new(1.0, 0.0);
         } else {
             axis1 = axis1.normalize();
         }
 
-        // determine the second axis of the ellipse
-        let axis2 = cross(&cam_dir, &axis1).normalize();
+        // determine the second axis of the 2D ellipse
+        let axis2 = Vec2::new(-axis1[1], axis1[0]);
 
-        info!("Axis1: {:?}", axis1);
-        info!("Axis2: {:?}", axis2);
+        // estimate the smaller radius of the 2D ellipse, i.e., axis 2
+        let radius =
+            estimate_bounding_sphere_radius_on_screen(self.fovy, sphere) * self.height / 2.0;
 
-        // determine the angle in which the sphere is projected onto the screen
+        // determine the larger radius
         let sphere_dir = sphere.center.normalize();
+        let cam_dir: Vec3 = Vec3::new(0.0, 0.0, -1.0);
         let sphere_dir_angle = dot(&cam_dir, &sphere_dir).acos();
         let sphere_angle = (sphere.radius / sphere.center.norm()).asin() * 2f32;
 
@@ -121,11 +139,13 @@ impl ScreenspaceEstimator {
         let x1 = max_sphere_angle.tan() / (self.fovy / 2.0).tan() / 2f32;
 
         let len_pixel = (x1 - x0) * self.height;
-        let b = len_pixel / 2.0;
+        let larger_radius = len_pixel / 2.0;
 
-        let ellipse_area = std::f32::consts::PI * a * b;
-
-        Ok(ellipse_area)
+        Ellipse2D {
+            center,
+            axis1: axis1 * larger_radius,
+            axis2: axis2 * radius,
+        }
     }
 }
 
@@ -151,4 +171,31 @@ fn estimate_bounding_sphere_radius_on_screen(fovy: f32, sphere: &BoundingSphere)
 
     // use this radius to estimate how much the screen is being filled by the sphere
     projected_radius / r_capital
+}
+
+/// A 2D ellipse in screen space.
+#[derive(Debug, Clone, Copy)]
+struct Ellipse2D {
+    pub center: Vec2,
+    pub axis1: Vec2,
+    pub axis2: Vec2,
+}
+
+impl Ellipse2D {
+    /// Returns the area of the ellipse.
+    pub fn area(&self) -> f32 {
+        let a = self.axis1.norm();
+        let b = self.axis2.norm();
+        std::f32::consts::PI * a * b
+    }
+
+    /// Tests if the 2D ellipse intersects with the given rectangle.
+    pub fn test_intersection(&self, width: f32, height: f32) -> IntersectionTestResult {
+        let min_x = self.center[0] - self.axis1[0];
+        let max_x = self.center[0] + self.axis1[0];
+        let min_y = self.center[1] - self.axis2[1];
+        let max_y = self.center[1] + self.axis2[1];
+
+        min_x < width && max_x > 0.0 && min_y < height && max_y > 0.0
+    }
 }
