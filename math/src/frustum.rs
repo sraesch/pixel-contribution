@@ -1,9 +1,20 @@
 use arrayvec::ArrayVec;
 use nalgebra_glm::{transpose, Mat4, Vec3};
 
+use crate::BoundingSphere;
+
 use super::{Aabb, Plane};
 
+/// The intersection of a frustum with a sphere.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrustumSphereIntersection {
+    Inside,
+    Intersecting,
+    Outside,
+}
+
 /// A frustum defined by 6 planes which is usually used for modelling the camera view.
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Frustum {
     planes: [Plane; 6],
 }
@@ -53,6 +64,27 @@ impl Frustum {
         self.planes
             .iter()
             .any(|plane| plane.is_aabb_negative_half_space(aabb))
+    }
+
+    /// Checks if the given sphere is located inside, intersecting or outside the frustum.
+    /// At the corners of the frustum, there are cases where the sphere is considered intersecting,
+    /// even though it is not. The result is only an approximation.
+    ///
+    /// # Arguments
+    ///* `sphere` - The sphere to be checked.
+    pub fn test_sphere(&self, sphere: &BoundingSphere) -> FrustumSphereIntersection {
+        let mut result = FrustumSphereIntersection::Inside;
+
+        for plane in self.planes.iter() {
+            let d = plane.signed_distance(&sphere.center);
+            if d <= -sphere.radius {
+                return FrustumSphereIntersection::Outside;
+            } else if d < sphere.radius {
+                result = FrustumSphereIntersection::Intersecting;
+            }
+        }
+
+        result
     }
 }
 

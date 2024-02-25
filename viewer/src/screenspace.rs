@@ -1,6 +1,6 @@
 use anyhow::Result;
 use log::info;
-use math::{transform_vec3, BoundingSphere};
+use math::{transform_vec3, BoundingSphere, Frustum};
 use nalgebra_glm::{cross, dot, Mat4, Vec3};
 
 /// An estimator for the footprint in pixels in the screenspace.
@@ -10,6 +10,9 @@ pub struct ScreenspaceEstimator {
 
     /// The perspective matrix.
     perspective: Mat4,
+
+    /// The frustum of the camera.
+    frustum: Frustum,
 
     /// The field of view in y-direction in radians.
     fovy: f32,
@@ -26,6 +29,7 @@ impl Default for ScreenspaceEstimator {
         Self {
             model_view: Mat4::identity(),
             perspective: Mat4::identity(),
+            frustum: Frustum::default(),
             fovy: std::f32::consts::FRAC_PI_2,
             width: 512.0,
             height: 512.0,
@@ -55,6 +59,8 @@ impl ScreenspaceEstimator {
 
         let aspect = perspective.m22 / perspective.m11;
         self.width = height * aspect;
+
+        self.frustum = Frustum::from_projection(&perspective);
     }
 
     /// Estimates the footprint in pixels on the screen for the given bounding sphere.
@@ -75,12 +81,10 @@ impl ScreenspaceEstimator {
             return Ok(self.width * self.height);
         }
 
-        // Check special case where the sphere is behind the camera in which case the sphere is not
-        // visible and thus the footprint is 0.
-        // NOTE: As we already checked if the camera is inside the sphere, we can assume that the
-        // sphere is completely behind the camera if the z-coordinate of the sphere center is
-        // positive.
-        if sphere.center[2] > 0f32 {
+        // Test the bounding sphere with the frustum
+        let result = self.frustum.test_sphere(&sphere);
+        info!("Frustum test result: {:?}", result);
+        if result == math::FrustumSphereIntersection::Outside {
             return Ok(0.0);
         }
 

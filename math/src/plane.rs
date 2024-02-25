@@ -2,9 +2,20 @@ use nalgebra_glm::{vec4_to_vec3, Vec3, Vec4};
 
 use super::{Aabb, Ray};
 
+/// A plane in 3D space.
+#[derive(Debug, Clone, Copy)]
 pub struct Plane {
     pub d: f32,
     pub n: Vec3,
+}
+
+impl Default for Plane {
+    fn default() -> Self {
+        Self {
+            d: 0f32,
+            n: Vec3::zeros(),
+        }
+    }
 }
 
 impl Plane {
