@@ -1,7 +1,9 @@
 use anyhow::Result;
 use log::info;
 use math::{transform_vec3, BoundingSphere, Frustum, IntersectionTestResult};
-use nalgebra_glm::{cross, dot, Mat4, Vec2, Vec3};
+use nalgebra_glm::{dot, Mat4, Vec2, Vec3};
+
+use crate::polygon_2d::Polygon2D;
 
 /// An estimator for the footprint in pixels in the screenspace.
 pub struct ScreenspaceEstimator {
@@ -82,17 +84,51 @@ impl ScreenspaceEstimator {
         }
 
         // Test the bounding sphere with the frustum, i.e., check if the sphere is visible at all.
-        let result = self.frustum.test_sphere(&sphere);
-        if result == IntersectionTestResult::Outside {
+        let intersection_test = self.frustum.test_sphere(&sphere);
+        if intersection_test == IntersectionTestResult::Outside {
             return Ok(0.0);
         }
 
-        let ellipse_2d = self.project_sphere_onto_screen(&sphere);
-        info!("Ellipse: {:?}", ellipse_2d);
+        // 1. --- Compute the smaller radius of the projected 2D ellipse ---
+        let radius =
+            estimate_bounding_sphere_radius_on_screen(self.fovy, &sphere) * self.height / 2.0;
 
-        let ellipse_area = ellipse_2d.area();
+        // 2. --- Determine the larger radius ---
+        // Determine the directional vector to the sphere center
+        let sphere_dir = sphere.center.normalize();
 
-        Ok(ellipse_area)
+        // Compute the angle between the camera direction and the sphere direction
+        let cam_dir: Vec3 = Vec3::new(0.0, 0.0, -1.0);
+        let sphere_dir_angle = dot(&cam_dir, &sphere_dir).acos();
+
+        // Compute half the angle of the sphere, i.e., the angle of the cone that tightly encloses
+        // the sphere.
+        let sphere_angle = (sphere.radius / sphere.center.norm()).asin();
+
+        // Compute the minimum and maximum angle of the cone and translate it into
+        // coordinates onto the plane spanned by the camera direction and the sphere
+        // direction.
+        let min_sphere_angle = sphere_dir_angle - sphere_angle;
+        let max_sphere_angle = sphere_dir_angle + sphere_angle;
+
+        let x0 = min_sphere_angle.tan() / (self.fovy / 2f32).tan();
+        let x1 = max_sphere_angle.tan() / (self.fovy / 2f32).tan();
+
+        let len_pixel = (x1 - x0) * self.height;
+        let larger_radius = len_pixel / 4f32;
+
+        // 3. --- Compute the area of the ellipse ---
+        if intersection_test == IntersectionTestResult::Inside {
+            Ok(std::f32::consts::PI * radius * larger_radius)
+        } else {
+            info!("Sphere is partially visible, but not completely.");
+
+            // create a polygonal approximation of the projected 2D ellipse
+            let ellipse_polygon: Polygon2D<16> =
+                self.create_polygon_from_ellipse(&sphere.center, larger_radius, radius);
+
+            Ok(0f32)
+        }
     }
 
     /// Projects the given view space position onto the screen.
@@ -107,9 +143,20 @@ impl ScreenspaceEstimator {
         )
     }
 
-    fn project_sphere_onto_screen(&self, sphere: &BoundingSphere) -> Ellipse2D {
+    /// Creates a 2D polygon that approximates the projected 2D ellipse of the given bounding sphere.
+    ///
+    /// # Arguments
+    /// * `sphere_center` - The center of the bounding sphere in view space.
+    /// * `big_radius` - The larger radius of the ellipse.
+    /// * `small_radius` - The smaller radius of the ellipse.
+    fn create_polygon_from_ellipse<const N: usize>(
+        &self,
+        sphere_center: &Vec3,
+        big_radius: f32,
+        small_radius: f32,
+    ) -> Polygon2D<N> {
         let screen_center = Vec2::new(self.width, self.height) * 0.5;
-        let center = self.project_onto_screen(&sphere.center);
+        let center = self.project_onto_screen(sphere_center);
 
         // determine the first axis of the 2D ellipse
         let mut axis1 = center - screen_center;
@@ -122,30 +169,30 @@ impl ScreenspaceEstimator {
         // determine the second axis of the 2D ellipse
         let axis2 = Vec2::new(-axis1[1], axis1[0]);
 
-        // estimate the smaller radius of the 2D ellipse, i.e., axis 2
-        let radius =
-            estimate_bounding_sphere_radius_on_screen(self.fovy, sphere) * self.height / 2.0;
+        // create the vertices of the 2D ellipse
+        let coefficients = Self::create_ellipse_polygon_coefficients::<N>();
+        let mut vertices = [Vec2::zeros(); N];
+        coefficients
+            .iter()
+            .zip(vertices.iter_mut())
+            .for_each(|(c, v)| {
+                *v = center + axis1 * c[0] * big_radius + axis2 * c[1] * small_radius;
+            });
 
-        // determine the larger radius
-        let sphere_dir = sphere.center.normalize();
-        let cam_dir: Vec3 = Vec3::new(0.0, 0.0, -1.0);
-        let sphere_dir_angle = dot(&cam_dir, &sphere_dir).acos();
-        let sphere_angle = (sphere.radius / sphere.center.norm()).asin() * 2f32;
+        Polygon2D::new(vertices)
+    }
 
-        let min_sphere_angle = sphere_dir_angle - sphere_angle / 2.0;
-        let max_sphere_angle = sphere_dir_angle + sphere_angle / 2.0;
+    /// Creates the coefficients for the 2D ellipse, i.e., equally spaced points on the unit
+    /// circle in counterclockwise order.
+    fn create_ellipse_polygon_coefficients<const N: usize>() -> [Vec2; N] {
+        let mut coefficients = [Vec2::zeros(); N];
 
-        let x0 = min_sphere_angle.tan() / (self.fovy / 2.0).tan() / 2f32;
-        let x1 = max_sphere_angle.tan() / (self.fovy / 2.0).tan() / 2f32;
+        coefficients.iter_mut().enumerate().for_each(|(i, c)| {
+            let angle = 2.0 * std::f32::consts::PI * (i as f32) / (N as f32);
+            *c = Vec2::new(angle.cos(), angle.sin());
+        });
 
-        let len_pixel = (x1 - x0) * self.height;
-        let larger_radius = len_pixel / 2.0;
-
-        Ellipse2D {
-            center,
-            axis1: axis1 * larger_radius,
-            axis2: axis2 * radius,
-        }
+        coefficients
     }
 }
 
@@ -171,31 +218,4 @@ fn estimate_bounding_sphere_radius_on_screen(fovy: f32, sphere: &BoundingSphere)
 
     // use this radius to estimate how much the screen is being filled by the sphere
     projected_radius / r_capital
-}
-
-/// A 2D ellipse in screen space.
-#[derive(Debug, Clone, Copy)]
-struct Ellipse2D {
-    pub center: Vec2,
-    pub axis1: Vec2,
-    pub axis2: Vec2,
-}
-
-impl Ellipse2D {
-    /// Returns the area of the ellipse.
-    pub fn area(&self) -> f32 {
-        let a = self.axis1.norm();
-        let b = self.axis2.norm();
-        std::f32::consts::PI * a * b
-    }
-
-    /// Tests if the 2D ellipse intersects with the given rectangle.
-    pub fn test_intersection(&self, width: f32, height: f32) -> IntersectionTestResult {
-        let min_x = self.center[0] - self.axis1[0];
-        let max_x = self.center[0] + self.axis1[0];
-        let min_y = self.center[1] - self.axis2[1];
-        let max_y = self.center[1] + self.axis2[1];
-
-        min_x < width && max_x > 0.0 && min_y < height && max_y > 0.0
-    }
 }

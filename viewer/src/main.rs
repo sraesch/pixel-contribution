@@ -2,6 +2,7 @@ mod cad_model;
 mod geometry;
 mod logging;
 mod options;
+mod polygon_2d;
 mod screenspace;
 mod sphere;
 
