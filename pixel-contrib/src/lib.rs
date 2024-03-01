@@ -1,6 +1,7 @@
 mod error;
 pub mod octahedron;
 mod pixel_contribution_map;
+pub mod polygon_2d;
 mod progress;
 mod view;
 

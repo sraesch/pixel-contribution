@@ -1,4 +1,4 @@
-use nalgebra_glm::{zero, Vec2};
+use nalgebra_glm::Vec2;
 
 /// A 2D polygon.
 pub struct Polygon2D<const N: usize> {
@@ -87,7 +87,7 @@ impl<const N: usize> Polygon2D<N> {
 
 #[cfg(test)]
 mod tests {
-    use std::f32::consts::E;
+    use nalgebra_glm::zero;
 
     use super::*;
 
