@@ -1,6 +1,7 @@
 use nalgebra_glm::Vec2;
 
 /// A 2D polygon.
+#[derive(Debug, Clone, Copy)]
 pub struct Polygon2D<const N: usize> {
     /// The vertices of the polygon in counterclockwise order.
     pub vertices: [Vec2; N],
