@@ -1,16 +1,22 @@
 use arrayvec::ArrayVec;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use nalgebra_glm::{zero, Vec2};
-use pixel_contrib::polygon_2d::Polygon2D;
+use pixel_contrib::polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D};
 
 #[derive(Debug, Clone)]
-struct BenchmarkInput<const N: usize> {
+struct BenchmarkInput<const N: usize>
+where
+    ArrayConstructor<N>: ArrayConstructorTrait,
+{
     pub polygon: Polygon2D<N>,
     pub width: f32,
     pub height: f32,
 }
 
-impl<const N: usize> BenchmarkInput<N> {
+impl<const N: usize> BenchmarkInput<N>
+where
+    ArrayConstructor<N>: ArrayConstructorTrait,
+{
     #[inline]
     pub fn go(&self) {
         self.polygon

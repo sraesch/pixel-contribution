@@ -1,13 +1,19 @@
-use nalgebra_glm::{zero, Vec2};
+use nalgebra_glm::Vec2;
 
 /// A 2D polygon.
 #[derive(Debug, Clone, Copy)]
-pub struct Polygon2D<const N: usize> {
+pub struct Polygon2D<const N: usize>
+where
+    ArrayConstructor<N>: ArrayConstructorTrait,
+{
     /// The vertices of the polygon in counterclockwise order.
     pub vertices: [Vec2; N],
 }
 
-impl<const N: usize> Polygon2D<N> {
+impl<const N: usize> Polygon2D<N>
+where
+    ArrayConstructor<N>: ArrayConstructorTrait,
+{
     /// Creates a new 2D polygon.
     ///
     /// # Arguments
@@ -28,14 +34,16 @@ impl<const N: usize> Polygon2D<N> {
     /// * `width` - The width of the rectangle.
     /// * `height` - The height of the rectangle.
     pub fn compute_area_with_overlapping_rectangle(&self, width: f32, height: f32) -> f32 {
-        const CAP: usize = 36;
-        let mut buf1: [Vec2; CAP] = [zero(); CAP];
-        let mut buf2: [Vec2; CAP] = [zero(); CAP];
+        let mut buf1: <ArrayConstructor<N> as ArrayConstructorTrait>::Array = Default::default();
+        let buf1 = buf1.inner_mut();
 
-        let n = Self::cut_with_axis::<0, CAP>(0f32, self.vertices.as_ref(), 1f32, &mut buf1);
-        let n = Self::cut_with_axis::<0, CAP>(width, &buf1[..n], -1f32, &mut buf2);
-        let n = Self::cut_with_axis::<1, CAP>(0f32, &buf2[..n], 1f32, &mut buf1);
-        let n = Self::cut_with_axis::<1, CAP>(height, &buf1[..n], -1f32, &mut buf2);
+        let mut buf2: <ArrayConstructor<N> as ArrayConstructorTrait>::Array = Default::default();
+        let buf2 = buf2.inner_mut();
+
+        let n = Self::cut_with_axis::<0>(0f32, self.vertices.as_ref(), 1f32, buf1);
+        let n = Self::cut_with_axis::<0>(width, &buf1[..n], -1f32, buf2);
+        let n = Self::cut_with_axis::<1>(0f32, &buf2[..n], 1f32, buf1);
+        let n = Self::cut_with_axis::<1>(height, &buf1[..n], -1f32, buf2);
 
         compute_area_for_given_vertices(&buf2[..n])
     }
@@ -51,7 +59,7 @@ impl<const N: usize> Polygon2D<N> {
     /// * `factor` - The factor for the defined axis to check if the vertex is on the correct side.
     /// * `out_vertices` - The vertices of the polygon after the cut.
     #[inline]
-    fn cut_with_axis<const A: usize, const CAP: usize>(
+    fn cut_with_axis<const A: usize>(
         axis_offset: f32,
         in_vertices: &[Vec2],
         factor: f32,
@@ -103,6 +111,150 @@ fn compute_area_for_given_vertices(vertices: &[Vec2]) -> f32 {
         .zip(vertices.iter().cycle().skip(1))
         .fold(0.0, |acc, (v1, v2)| acc + v1.x * v2.y - v1.y * v2.x)
         / 2.0
+}
+
+/// A trait for arrays of vertices.
+pub trait ArrayTrait: Sized + Default + Clone + Copy {
+    const DIM: usize;
+
+    fn inner(&self) -> &[Vec2];
+    fn inner_mut(&mut self) -> &mut [Vec2];
+}
+
+/// A wrapper for arrays of vertices.
+#[derive(Debug, Clone, Copy)]
+pub struct ArrayWrapper<const N: usize> {
+    inner: [Vec2; N],
+}
+
+impl<const N: usize> Default for ArrayWrapper<N> {
+    fn default() -> Self {
+        Self {
+            inner: [Vec2::default(); N],
+        }
+    }
+}
+
+impl<const N: usize> ArrayTrait for ArrayWrapper<N> {
+    const DIM: usize = N;
+
+    fn inner(&self) -> &[Vec2] {
+        &self.inner
+    }
+
+    fn inner_mut(&mut self) -> &mut [Vec2] {
+        &mut self.inner
+    }
+}
+
+/// A trait for array constructors.
+pub trait ArrayConstructorTrait {
+    type Array: ArrayTrait;
+}
+
+/// A struct for constructing arrays of vertices.
+pub struct ArrayConstructor<const N: usize> {}
+
+impl ArrayConstructorTrait for ArrayConstructor<1> {
+    type Array = ArrayWrapper<5>;
+}
+
+impl ArrayConstructorTrait for ArrayConstructor<2> {
+    type Array = ArrayWrapper<6>;
+}
+
+impl ArrayConstructorTrait for ArrayConstructor<3> {
+    type Array = ArrayWrapper<7>;
+}
+
+impl ArrayConstructorTrait for ArrayConstructor<4> {
+    type Array = ArrayWrapper<8>;
+}
+
+impl ArrayConstructorTrait for ArrayConstructor<5> {
+    type Array = ArrayWrapper<9>;
+}
+
+impl ArrayConstructorTrait for ArrayConstructor<6> {
+    type Array = ArrayWrapper<10>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<7> {
+    type Array = ArrayWrapper<11>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<8> {
+    type Array = ArrayWrapper<12>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<9> {
+    type Array = ArrayWrapper<13>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<10> {
+    type Array = ArrayWrapper<14>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<11> {
+    type Array = ArrayWrapper<15>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<12> {
+    type Array = ArrayWrapper<16>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<13> {
+    type Array = ArrayWrapper<17>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<14> {
+    type Array = ArrayWrapper<18>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<15> {
+    type Array = ArrayWrapper<19>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<16> {
+    type Array = ArrayWrapper<20>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<17> {
+    type Array = ArrayWrapper<21>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<18> {
+    type Array = ArrayWrapper<22>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<19> {
+    type Array = ArrayWrapper<23>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<20> {
+    type Array = ArrayWrapper<24>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<21> {
+    type Array = ArrayWrapper<25>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<22> {
+    type Array = ArrayWrapper<26>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<23> {
+    type Array = ArrayWrapper<27>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<24> {
+    type Array = ArrayWrapper<28>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<25> {
+    type Array = ArrayWrapper<29>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<26> {
+    type Array = ArrayWrapper<30>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<27> {
+    type Array = ArrayWrapper<31>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<28> {
+    type Array = ArrayWrapper<32>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<29> {
+    type Array = ArrayWrapper<33>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<30> {
+    type Array = ArrayWrapper<34>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<31> {
+    type Array = ArrayWrapper<35>;
+}
+impl ArrayConstructorTrait for ArrayConstructor<32> {
+    type Array = ArrayWrapper<36>;
 }
 
 #[cfg(test)]

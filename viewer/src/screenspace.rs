@@ -2,7 +2,7 @@ use anyhow::Result;
 use log::info;
 use math::{transform_vec3, BoundingSphere, Frustum, IntersectionTestResult};
 use nalgebra_glm::{dot, Mat4, Vec2, Vec3};
-use pixel_contrib::polygon_2d::Polygon2D;
+use pixel_contrib::polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D};
 
 /// An estimator for the footprint in pixels in the screenspace.
 pub struct ScreenspaceEstimator {
@@ -153,7 +153,10 @@ impl ScreenspaceEstimator {
         sphere_center: &Vec3,
         big_radius: f32,
         small_radius: f32,
-    ) -> Polygon2D<N> {
+    ) -> Polygon2D<N>
+    where
+        ArrayConstructor<N>: ArrayConstructorTrait,
+    {
         let screen_center = Vec2::new(self.width, self.height) * 0.5;
         let center = self.project_onto_screen(sphere_center);
 
