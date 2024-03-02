@@ -73,7 +73,6 @@ impl ScreenspaceEstimator {
     pub fn estimate_screenspace_for_bounding_sphere(
         &self,
         mut sphere: BoundingSphere,
-        debug_out_polygon: &mut Vec<Vec2>,
     ) -> Result<f32> {
         // transform the sphere into view space
         sphere.center = transform_vec3(&self.model_view, &sphere.center);
@@ -134,21 +133,6 @@ impl ScreenspaceEstimator {
 
         // Determine the center of the projected 2D ellipse on the screen
         let ellipse_center: Vec2 = screen_center + axis1 * (x0 + x1);
-
-        // For debug purposes we store the polygon that approximates the projected 2D ellipse
-        {
-            const N: usize = 16;
-            let polygon = Self::create_polygon_from_ellipse::<N>(
-                &ellipse_center,
-                &axis1,
-                &axis2,
-                larger_radius,
-                radius,
-            );
-
-            debug_out_polygon.push(ellipse_center);
-            debug_out_polygon.extend_from_slice(&polygon.vertices);
-        }
 
         // 3. --- Compute the area of the ellipse ---
         if intersection_test == IntersectionTestResult::Inside {

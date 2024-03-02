@@ -11,17 +11,15 @@ use cad_model::CADModel;
 use clap::Parser;
 use log::{debug, error, info, trace};
 use math::extract_camera_position;
-use nalgebra_glm::{Vec2, Vec3, Vec4};
+use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
 use pixel_contrib::PixelContributionMaps;
 use rasterizer::BoundingSphere;
 use render_lib::{
-    camera::Camera,
-    configure_culling, create_and_run_canvas,
-    ui::{Shape, Widget},
-    BlendFactor, CanvasOptions, EventHandler, FaceCulling, FrameBuffer, Key, MouseButton, NamedKey,
+    camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
+    EventHandler, FaceCulling, FrameBuffer, Key, MouseButton, NamedKey,
 };
 use sphere::Sphere;
 
@@ -41,8 +39,6 @@ struct ViewerImpl {
     pixel_contrib_maps: PixelContributionMaps,
 
     ui: render_lib::ui::UI,
-
-    ellipse_widget: Option<u32>,
 }
 
 impl ViewerImpl {
@@ -73,7 +69,6 @@ impl ViewerImpl {
             current_contrib_map_index: 0,
             pixel_contrib_maps,
             ui: Default::default(),
-            ellipse_widget: None,
         })
     }
 
@@ -297,35 +292,9 @@ impl EventHandler for ViewerImpl {
                         let mut estimator = ScreenspaceEstimator::default();
                         estimator.update_camera(model_view, projection_matrix, height);
 
-                        let mut polygon_vertices = Vec::new();
                         let predicted_sphere_pixels = estimator
-                            .estimate_screenspace_for_bounding_sphere(
-                                self.bounding_sphere.clone(),
-                                &mut polygon_vertices,
-                            )
+                            .estimate_screenspace_for_bounding_sphere(self.bounding_sphere.clone())
                             .unwrap();
-
-                        polygon_vertices.iter_mut().for_each(|v| {
-                            v[1] = height - v[1];
-                        });
-
-                        if let Some(ellipse_widget) = self.ellipse_widget {
-                            self.ui.remove_widget(ellipse_widget);
-                        }
-
-                        let mut indices = Vec::new();
-                        let num_triangles = polygon_vertices.len() as u32 - 1;
-                        for i in 0..num_triangles {
-                            indices.push(0);
-                            indices.push(i + 1);
-                            indices.push((i + 1) % num_triangles + 1);
-                        }
-
-                        self.ellipse_widget = Some(self.ui.add_widget(Widget::new_with_shape(
-                            Vec2::new(0f32, 0f32),
-                            Vec2::new(1f32, 1f32),
-                            Shape::new(&polygon_vertices, &indices),
-                        )));
 
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
