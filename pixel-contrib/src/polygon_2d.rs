@@ -146,10 +146,10 @@ mod tests {
         const N: usize = 4;
         let mut vertices = [zero(); N];
 
-        for i in 0..N {
+        vertices.iter_mut().enumerate().for_each(|(i, v)| {
             let angle = 2.0 * std::f32::consts::PI * i as f32 / N as f32;
-            vertices[i] = Vec2::new(angle.cos(), angle.sin() + 1f32);
-        }
+            *v = Vec2::new(angle.cos(), angle.sin() + 1f32);
+        });
 
         let polygon = Polygon2D::new(vertices);
         let full_area = polygon.compute_area();
@@ -175,10 +175,10 @@ mod tests {
         for (i, corner) in corners.iter().enumerate() {
             let mut vertices = [zero(); N];
 
-            for i in 0..N {
+            vertices.iter_mut().enumerate().for_each(|(i, v)| {
                 let angle = 2.0 * std::f32::consts::PI * i as f32 / N as f32;
-                vertices[i] = Vec2::new(angle.cos(), angle.sin()) + corner;
-            }
+                *v = Vec2::new(angle.cos(), angle.sin()) + corner;
+            });
 
             let polygon = Polygon2D::new(vertices);
             let full_area = polygon.compute_area();
@@ -200,10 +200,10 @@ mod tests {
         const N: usize = 32;
         let mut vertices = [zero(); N];
 
-        for i in 0..N {
+        vertices.iter_mut().enumerate().for_each(|(i, v)| {
             let angle = 2.0 * std::f32::consts::PI * i as f32 / N as f32;
-            vertices[i] = Vec2::new(angle.cos(), angle.sin()) * 10f32 + Vec2::new(0.5f32, 0.5f32);
-        }
+            *v = Vec2::new(angle.cos(), angle.sin()) * 10f32 + Vec2::new(0.5f32, 0.5f32);
+        });
 
         let polygon = Polygon2D::new(vertices);
         let area = polygon.compute_area_with_overlapping_rectangle(1.0, 1.0);
