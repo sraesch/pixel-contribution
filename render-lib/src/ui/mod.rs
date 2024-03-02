@@ -1,22 +1,19 @@
 mod shader;
+mod shape;
 mod widget;
 
-use std::{collections::BTreeMap, mem::size_of};
+use std::collections::BTreeMap;
 
 use nalgebra_glm::{scaling2d, Mat3, Vec2, Vec3};
+pub use shape::*;
 pub use widget::*;
 
-use crate::{
-    Attribute, AttributeBlock, BlendFactor, DataType, DrawCall, Error, FrameBuffer, GPUBuffer,
-    GPUBufferType, GPUMesh, IndexData, PrimitiveType, Result,
-};
+use crate::{BlendFactor, FrameBuffer, Result};
 
 pub struct UI {
     shader: shader::UIShader,
     width: f32,
     height: f32,
-
-    quad_geometry: Option<GPUMesh>,
 
     widget_id_counter: u32,
     widgets: BTreeMap<u32, Widget>,
@@ -37,7 +34,6 @@ impl UI {
             shader,
             width: 0.0,
             height: 0.0,
-            quad_geometry: None,
             widget_id_counter: 0,
             widgets: BTreeMap::new(),
         }
@@ -53,7 +49,6 @@ impl UI {
 
         self.width = width;
         self.height = height;
-        self.quad_geometry = Some(create_quad_mesh());
 
         Ok(())
     }
@@ -75,12 +70,6 @@ impl UI {
         // activate alpha-transparency
         FrameBuffer::set_blending(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
 
-        // get the quad geometry
-        let quad_geometry = self
-            .quad_geometry
-            .as_ref()
-            .ok_or(Error::UI("Quad geometry not initialized.".to_owned()))?;
-
         // render all widgets
         let ui_transform = self.create_ui_transform_matrix();
         for widget in self.widgets.values() {
@@ -88,7 +77,7 @@ impl UI {
             let color = widget.color();
 
             self.shader.apply_basic_shader(&transform, &color);
-            quad_geometry.draw();
+            widget.render();
         }
 
         FrameBuffer::disable_blend();
@@ -128,33 +117,4 @@ impl UI {
 
         transform
     }
-}
-
-fn create_quad_mesh() -> GPUMesh {
-    let vertices: [f32; 8] = [1f32, 0f32, 0f32, 0f32, 1f32, 1f32, 0f32, 1f32];
-    let positions = GPUBuffer::new_with_data(GPUBufferType::Vertices, &vertices);
-
-    let mut draw_call = DrawCall::new();
-    draw_call.set_data(&[AttributeBlock {
-        vertex_data: &positions,
-        attributes: vec![Attribute {
-            offset: 0,
-            stride: size_of::<f32>() * 2,
-            num_components: 2,
-            data_type: DataType::Float,
-            is_integer: false,
-            normalized: false,
-        }],
-    }]);
-
-    let indices: [u32; 4] = [0, 1, 2, 3];
-    let indices = GPUBuffer::new_with_data(GPUBufferType::Indices, &indices);
-
-    let index_data = IndexData {
-        offset: 0,
-        num: 4,
-        datatype: DataType::UnsignedInt,
-    };
-
-    GPUMesh::new(PrimitiveType::TriangleStrip, draw_call, indices, index_data)
 }

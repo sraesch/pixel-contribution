@@ -129,7 +129,7 @@ impl EventHandler for ViewerImpl {
         info!("setup...DONE");
 
         info!("Initializing UI...");
-        self.ui.initialize()?;
+        self.ui.initialize(width as f32, height as f32)?;
         info!("Initializing UI...DONE");
 
         Ok(())
@@ -175,6 +175,8 @@ impl EventHandler for ViewerImpl {
         }
         configure_culling(FaceCulling::None);
         FrameBuffer::disable_blend();
+
+        self.ui.render().unwrap();
     }
 
     fn resize(&mut self, w: u32, h: u32) {
@@ -182,6 +184,7 @@ impl EventHandler for ViewerImpl {
 
         FrameBuffer::viewport(0, 0, w, h);
         self.camera.update_window_size(w, h);
+        self.ui.update_size(w as f32, h as f32);
     }
 
     fn cursor_move(&mut self, x: f64, y: f64) {
