@@ -37,7 +37,7 @@ impl<const N: usize> Polygon2D<N> {
         let n = Self::cut_with_axis::<1, CAP>(0f32, &buf2[..n], 1f32, &mut buf1);
         let n = Self::cut_with_axis::<1, CAP>(height, &buf1[..n], -1f32, &mut buf2);
 
-        Self::compute_area_for_given_vertices(&buf2[..n])
+        compute_area_for_given_vertices(&buf2[..n])
     }
 
     /// Cuts the given vertices with the given axis and removes either the negative or positive
@@ -57,15 +57,23 @@ impl<const N: usize> Polygon2D<N> {
         factor: f32,
         out_vertices: &mut [Vec2],
     ) -> usize {
+        let n = in_vertices.len();
+        if n == 0 {
+            return 0;
+        }
+
         let mut num_result_vertices = 0;
 
-        for (v1, v2) in in_vertices.iter().zip(in_vertices.iter().cycle().skip(1)) {
+        let mut v1 = *in_vertices.first().unwrap();
+        for i in 0..in_vertices.len() {
+            let v2 = in_vertices[(i + 1) % n];
+
             let x1 = v1[A] - axis_offset;
             let x2 = v2[A] - axis_offset;
 
             // add the vertex if it is on the correct side of the axis
             if x1 * factor >= 0f32 {
-                out_vertices[num_result_vertices] = *v1;
+                out_vertices[num_result_vertices] = v1;
                 num_result_vertices += 1;
             }
 
@@ -75,6 +83,8 @@ impl<const N: usize> Polygon2D<N> {
                 out_vertices[num_result_vertices] = t * v1 + (1f32 - t) * v2;
                 num_result_vertices += 1;
             }
+
+            v1 = v2;
         }
 
         num_result_vertices
