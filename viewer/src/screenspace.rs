@@ -120,10 +120,36 @@ impl ScreenspaceEstimator {
 
         // For debug purposes we store the polygon that approximates the projected 2D ellipse
         {
-            let ellipse_polygon: Polygon2D<16> =
-                self.create_polygon_from_ellipse(&sphere.center, larger_radius, radius);
-            debug_out_polygon.push(self.project_onto_screen(&sphere.center));
-            debug_out_polygon.extend_from_slice(&ellipse_polygon.vertices);
+            const N: usize = 16;
+            let screen_center = Vec2::new(self.width, self.height) * 0.5;
+            let center = self.project_onto_screen(&sphere.center);
+
+            // determine the first axis of the 2D ellipse
+            let mut axis1 = center - screen_center;
+            if axis1.norm() < 1e-6 {
+                axis1 = Vec2::new(1.0, 0.0);
+            } else {
+                axis1 = axis1.normalize();
+            }
+
+            let xm = (x0 + x1) * 0.5 * self.height / 2.0;
+            let center = screen_center + axis1 * xm;
+
+            // determine the second axis of the 2D ellipse
+            let axis2 = Vec2::new(-axis1[1], axis1[0]);
+
+            // create the vertices of the 2D ellipse
+            let coefficients = Self::create_ellipse_polygon_coefficients::<N>();
+            let mut vertices = [Vec2::zeros(); N];
+            coefficients
+                .iter()
+                .zip(vertices.iter_mut())
+                .for_each(|(c, v)| {
+                    *v = center + axis1 * c[0] * larger_radius + axis2 * c[1] * radius;
+                });
+
+            debug_out_polygon.push(center);
+            debug_out_polygon.extend_from_slice(&vertices);
         }
 
         // 3. --- Compute the area of the ellipse ---
