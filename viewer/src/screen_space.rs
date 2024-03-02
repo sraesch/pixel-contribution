@@ -227,7 +227,7 @@ impl ScreenSpaceEstimator {
 /// * `fovy` - The field of view in y-direction in radians.
 /// * `sphere` - The bounding sphere.
 fn estimate_bounding_sphere_radius_on_screen(fovy: f32, sphere: &BoundingSphere) -> f32 {
-    // the distance of the sphere to the camera projection plane
+    // The distance of the sphere projected onto the camera projection plane.
     let d = -sphere.center[2];
 
     // project the ray that tangentially touches the sphere onto the plane that is 'd' units away
@@ -240,4 +240,514 @@ fn estimate_bounding_sphere_radius_on_screen(fovy: f32, sphere: &BoundingSphere)
 
     // use this radius to estimate how much the screen is being filled by the sphere
     projected_radius / r_capital
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// Tests the screen space estimator with a sphere that is completely visible and directly in
+    /// front of the camera in its center.
+    #[test]
+    fn test_screen_space_estimator_sphere_center() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 646f32;
+        let model_view = Mat4::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -2.1213202, 1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.97583085, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.3999999, -1.0, 0.0, 0.0,
+            -1.697056, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!((result - 262207f32).abs() / 262207f32 < 1e-5);
+    }
+
+    /// Tests the screen space estimator with a sphere that is partially visible. The sphere is
+    /// located to the left of the screen and is partially out of the window.
+    #[test]
+    fn test_screen_space_estimator_sphere_left_side() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -3.6970365, 0.17255715,
+            -3.4511428, 1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -2.152261, -1.0, 0.0, 0.0,
+            -6.4209323, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!((result - 47856f32).abs() / 47856f32 < 5e-3);
+    }
+
+    /// Tests the screen space estimator with a sphere that is partially visible. The sphere is
+    /// located to the right of the screen and is partially out of the window.
+    #[test]
+    fn test_screen_space_estimator_sphere_right_side() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 3.5916266, 0.2105576,
+            -3.2393477, 1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -2.0324519, -1.0, 0.0, 0.0,
+            -5.5346313, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!((result - 49536f32).abs() / 49536f32 < 5e-3);
+    }
+
+    /// Tests the screen space estimator with a sphere that is partially visible. The sphere is
+    /// located to the top of the screen and is partially out of the window.
+    #[test]
+    fn test_screen_space_estimator_sphere_top_side() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            0.99309623,
+            0.07378686,
+            0.091189094,
+            0.0,
+            -0.09551708,
+            0.9599192,
+            0.2634989,
+            0.0,
+            -0.0680914,
+            -0.27038985,
+            0.96034,
+            0.0,
+            0.11187549,
+            2.077688,
+            -3.196443,
+            1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -2.008181, -1.0, 0.0, 0.0,
+            -5.3612695, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!(
+            (result - 59398f32).abs() / 59398f32 < 2e-2,
+            "Result: {}, Should: {}",
+            result,
+            59398f32
+        );
+    }
+
+    /// Tests the screen space estimator with a sphere that is partially visible. The sphere is
+    /// located to the bottom of the screen and is partially out of the window.
+    #[test]
+    fn test_screen_space_estimator_sphere_bottom_side() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            0.6043273,
+            0.0,
+            0.7967362,
+            0.0,
+            0.0033197245,
+            0.99999136,
+            -0.0025180236,
+            0.0,
+            -0.7967292,
+            0.0041666552,
+            0.60432214,
+            0.0,
+            0.006021142,
+            -1.1806747,
+            -2.1771443,
+            1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.4315789, -1.0, 0.0, 0.0,
+            -1.8551263, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!(
+            (result - 135952f32).abs() / 135952f32 < 1e-2,
+            "Result: {}, Should: {}",
+            result,
+            135952f32
+        );
+    }
+
+    /// Tests the screen space estimator with a sphere that is very big and does not fit on the
+    /// screen and is covering most of the screen.
+    #[test]
+    fn test_screen_space_estimator_sphere_big() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.7484075, 1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            -1.1890486,
+            -1.0,
+            0.0,
+            0.0,
+            -0.73156685,
+            0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!(
+            (result - 443467f32).abs() / 443467f32 < 6e-2,
+            "Result: {}, Should: {}",
+            result,
+            443467f32
+        );
+    }
+
+    /// Tests the screen space estimator with a sphere that is at the bottom right corner and only
+    /// partially visible.
+    #[test]
+    fn test_screen_space_estimator_sphere_bottom_right() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.8732692, -1.3417664,
+            -2.2300825, 1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.4615251, -1.0, 0.0, 0.0,
+            -2.008282, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!(
+            (result - 96079f32).abs() / 96079f32 < 5e-3,
+            "Result: {}, Should: {}",
+            result,
+            96079f32
+        );
+    }
+
+    /// Tests the screen space estimator with a sphere that is at the top right corner and only
+    /// partially visible.
+    #[test]
+    fn test_screen_space_estimator_sphere_top_right() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            0.83405703,
+            0.0,
+            -0.55167824,
+            0.0,
+            -0.4021004,
+            0.68465465,
+            -0.6079172,
+            0.0,
+            0.37770903,
+            0.7288677,
+            0.571041,
+            0.0,
+            1.7835734,
+            1.1846286,
+            -2.6521535,
+            1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.7002845, -1.0, 0.0, 0.0,
+            -3.34279, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!(
+            (result - 103496f32).abs() / 103496f32 < 4e-2,
+            "Result: {}, Should: {}",
+            result,
+            103496f32
+        );
+    }
+
+    /// Tests the screen space estimator with a sphere that is at the top left corner and only
+    /// partially visible.
+    #[test]
+    fn test_screen_space_estimator_sphere_top_left() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            0.7748143,
+            1.1545633e-8,
+            0.6321889,
+            0.0,
+            -0.21924871,
+            0.9379358,
+            0.26871246,
+            0.0,
+            -0.5929526,
+            -0.34680885,
+            0.7267261,
+            0.0,
+            -2.459809,
+            1.9747595,
+            -2.8255568,
+            1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.7983762, -1.0, 0.0, 0.0,
+            -3.9494693, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!(
+            (result - 65179f32).abs() / 65179f32 < 1e-2,
+            "Result: {}, Should: {}",
+            result,
+            65179f32
+        );
+    }
+
+    /// Tests the screen space estimator with a sphere that is at the bottom left corner and only
+    /// partially visible.
+    #[test]
+    fn test_screen_space_estimator_sphere_bottom_left() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            0.99929696,
+            -1.8613356e-9,
+            0.03749121,
+            0.0,
+            0.030035013,
+            0.5985018,
+            -0.80055827,
+            0.0,
+            -0.022438556,
+            0.8011215,
+            0.59808105,
+            0.0,
+            -1.2603166,
+            -0.7094321,
+            -2.149794,
+            1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.4161072, -1.0, 0.0, 0.0,
+            -1.7772415, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!(
+            (result - 155577f32).abs() / 155577f32 < 3e-2,
+            "Result: {}, Should: {}",
+            result,
+            155577f32
+        );
+    }
+
+    /// Tests the screen space estimator with a sphere where the camera is fully inside the sphere.
+    #[test]
+    fn test_screen_space_estimator_sphere_camera_inside() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.2909417, 1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            -1.0000019,
+            -1.0,
+            0.0,
+            0.0,
+            -6.824531e-6,
+            0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert!(
+            (result - 480000f32).abs() / 480000f32 < 1e-3,
+            "Result: {}, Should: {}",
+            result,
+            480000f32
+        );
+    }
+
+    /// Tests the screen space estimator with a sphere outside the camera frustum.
+    #[test]
+    fn test_screen_space_estimator_sphere_outside() {
+        let mut estimator = ScreenSpaceEstimator::new();
+
+        let height = 600f32;
+        let model_view = Mat4::new(
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -10.286586, 1.3572578,
+            -4.2860775, 1.0,
+        )
+        .transpose();
+        let projection = Mat4::new(
+            0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -2.6245716, -1.0, 0.0, 0.0,
+            -10.409276, 0.0,
+        )
+        .transpose();
+
+        estimator.update_camera(model_view, projection, height);
+
+        let sphere = BoundingSphere {
+            center: Vec3::new(0.0, 0.0, 0.0),
+            radius: std::f32::consts::SQRT_2,
+        };
+
+        let result = estimator
+            .estimate_screen_space_for_bounding_sphere(sphere)
+            .unwrap();
+        assert_eq!(result, 0f32);
+    }
 }
