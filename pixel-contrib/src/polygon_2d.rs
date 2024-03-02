@@ -1,4 +1,4 @@
-use nalgebra_glm::Vec2;
+use nalgebra_glm::{zero, Vec2};
 
 /// A 2D polygon.
 #[derive(Debug, Clone, Copy)]
@@ -28,27 +28,36 @@ impl<const N: usize> Polygon2D<N> {
     /// * `width` - The width of the rectangle.
     /// * `height` - The height of the rectangle.
     pub fn compute_area_with_overlapping_rectangle(&self, width: f32, height: f32) -> f32 {
-        let mut vertices = Self::cut_with_axis::<0>(0f32, self.vertices.as_ref(), 1f32);
-        vertices = Self::cut_with_axis::<0>(width, vertices.as_ref(), -1f32);
-        vertices = Self::cut_with_axis::<1>(0f32, vertices.as_ref(), 1f32);
-        vertices = Self::cut_with_axis::<1>(height, vertices.as_ref(), -1f32);
-        Self::compute_area_for_given_vertices(&vertices)
+        const CAP: usize = 36;
+        let mut buf1: [Vec2; CAP] = [zero(); CAP];
+        let mut buf2: [Vec2; CAP] = [zero(); CAP];
+
+        let n = Self::cut_with_axis::<0, CAP>(0f32, self.vertices.as_ref(), 1f32, &mut buf1);
+        let n = Self::cut_with_axis::<0, CAP>(width, &buf1[..n], -1f32, &mut buf2);
+        let n = Self::cut_with_axis::<1, CAP>(0f32, &buf2[..n], 1f32, &mut buf1);
+        let n = Self::cut_with_axis::<1, CAP>(height, &buf1[..n], -1f32, &mut buf2);
+
+        Self::compute_area_for_given_vertices(&buf2[..n])
     }
 
     /// Cuts the given vertices with the given axis and removes either the negative or positive
-    /// part, depending on the
+    /// part, depending on the factor.
+    /// The result is stored in the out_vertices array and the number of vertices in the result is
+    /// returned.
     ///
     /// # Arguments
     /// * `axis_offset` - The offset of the axis along the other axis.
     /// * `in_vertices` - The vertices of the polygon to cut.
     /// * `factor` - The factor for the defined axis to check if the vertex is on the correct side.
+    /// * `out_vertices` - The vertices of the polygon after the cut.
     #[inline]
-    fn cut_with_axis<const A: usize>(
+    fn cut_with_axis<const A: usize, const CAP: usize>(
         axis_offset: f32,
         in_vertices: &[Vec2],
         factor: f32,
-    ) -> Vec<Vec2> {
-        let mut result = Vec::new();
+        out_vertices: &mut [Vec2],
+    ) -> usize {
+        let mut num_result_vertices = 0;
 
         for (v1, v2) in in_vertices.iter().zip(in_vertices.iter().cycle().skip(1)) {
             let x1 = v1[A] - axis_offset;
@@ -56,19 +65,19 @@ impl<const N: usize> Polygon2D<N> {
 
             // add the vertex if it is on the correct side of the axis
             if x1 * factor >= 0f32 {
-                result.push(*v1);
+                out_vertices[num_result_vertices] = *v1;
+                num_result_vertices += 1;
             }
 
             // check if the axis is intersecting
             if x1 * x2 < 0f32 {
                 let t = x2 / (x2 - x1);
-                let vi = t * v1 + (1f32 - t) * v2;
-
-                result.push(vi);
+                out_vertices[num_result_vertices] = t * v1 + (1f32 - t) * v2;
+                num_result_vertices += 1;
             }
         }
 
-        result
+        num_result_vertices
     }
 
     /// Computes the area of the polygon defined by the given vertices.
