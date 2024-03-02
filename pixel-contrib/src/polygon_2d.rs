@@ -19,7 +19,7 @@ impl<const N: usize> Polygon2D<N> {
     /// Computes the area of the polygon.
     #[inline]
     pub fn compute_area(&self) -> f32 {
-        Self::compute_area_for_given_vertices(self.vertices.as_ref())
+        compute_area_for_given_vertices(self.vertices.as_ref())
     }
 
     /// Computes the intersection of the given vertices with the given axis.
@@ -79,20 +79,20 @@ impl<const N: usize> Polygon2D<N> {
 
         num_result_vertices
     }
+}
 
-    /// Computes the area of the polygon defined by the given vertices.
-    ///
-    /// # Arguments
-    /// * `vertices` - The vertices of the polygon in counterclockwise order.
-    fn compute_area_for_given_vertices(vertices: &[Vec2]) -> f32 {
-        // Using the Shoelace formula to compute the area of the polygon.
-        // https://en.wikipedia.org/wiki/Shoelace_formula
-        vertices
-            .iter()
-            .zip(vertices.iter().cycle().skip(1))
-            .fold(0.0, |acc, (v1, v2)| acc + v1.x * v2.y - v1.y * v2.x)
-            / 2.0
-    }
+/// Computes the area of the polygon defined by the given vertices.
+///
+/// # Arguments
+/// * `vertices` - The vertices of the polygon in counterclockwise order.
+fn compute_area_for_given_vertices(vertices: &[Vec2]) -> f32 {
+    // Using the Shoelace formula to compute the area of the polygon.
+    // https://en.wikipedia.org/wiki/Shoelace_formula
+    vertices
+        .iter()
+        .zip(vertices.iter().cycle().skip(1))
+        .fold(0.0, |acc, (v1, v2)| acc + v1.x * v2.y - v1.y * v2.x)
+        / 2.0
 }
 
 #[cfg(test)]
