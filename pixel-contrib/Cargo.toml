@@ -26,3 +26,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 [[bench]]
 name = "polygon_2d_bench"
 harness = false
+
+[[bench]]
+name = "screen_space_bench"
+harness = false
