@@ -111,9 +111,9 @@ impl UI {
 
     /// Creates and returns the transformation matrix for the UI.
     fn create_ui_transform_matrix(&self) -> Mat3 {
-        let mut transform = scaling2d(&Vec2::new(2.0 / self.width, 2.0 / self.height));
+        let mut transform = scaling2d(&Vec2::new(2.0 / self.width, -2.0 / self.height));
 
-        transform.set_column(2, &Vec3::new(-1.0, -1.0, 1f32));
+        transform.set_column(2, &Vec3::new(-1.0, 1.0, 1f32));
 
         transform
     }
