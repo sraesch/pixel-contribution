@@ -2,7 +2,7 @@ mod cad_model;
 mod geometry;
 mod logging;
 mod options;
-mod screenspace;
+mod screen_space;
 mod sphere;
 
 use std::error::Error;
@@ -23,7 +23,7 @@ use render_lib::{
 };
 use sphere::Sphere;
 
-use crate::screenspace::ScreenspaceEstimator;
+use crate::screen_space::ScreenSpaceEstimator;
 
 struct ViewerImpl {
     options: Options,
@@ -289,11 +289,11 @@ impl EventHandler for ViewerImpl {
                             }
                         };
 
-                        let mut estimator = ScreenspaceEstimator::default();
+                        let mut estimator = ScreenSpaceEstimator::default();
                         estimator.update_camera(model_view, projection_matrix, height);
 
                         let predicted_sphere_pixels = estimator
-                            .estimate_screenspace_for_bounding_sphere(self.bounding_sphere.clone())
+                            .estimate_screen_space_for_bounding_sphere(self.bounding_sphere.clone())
                             .unwrap();
 
                         let cam_dir =

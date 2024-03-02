@@ -4,8 +4,8 @@ use math::{transform_vec3, BoundingSphere, Frustum, IntersectionTestResult};
 use nalgebra_glm::{dot, Mat4, Vec2, Vec3};
 use pixel_contrib::polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D};
 
-/// An estimator for the footprint in pixels in the screenspace.
-pub struct ScreenspaceEstimator {
+/// An estimator for the footprint in pixels in the screen space.
+pub struct ScreenSpaceEstimator {
     /// The model view matrix.
     model_view: Mat4,
 
@@ -25,14 +25,14 @@ pub struct ScreenspaceEstimator {
     pub height: f32,
 }
 
-impl Default for ScreenspaceEstimator {
+impl Default for ScreenSpaceEstimator {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ScreenspaceEstimator {
-    /// Creates a new screenspace estimator.
+impl ScreenSpaceEstimator {
+    /// Creates a new screen space estimator.
     pub fn new() -> Self {
         Self {
             model_view: Mat4::identity(),
@@ -44,7 +44,7 @@ impl ScreenspaceEstimator {
         }
     }
 
-    /// Updates the camera parameters for the screenspace estimator.
+    /// Updates the camera parameters for the screen space estimator.
     ///
     /// # Arguments
     /// * `model_view` - The model view matrix.
@@ -70,7 +70,7 @@ impl ScreenspaceEstimator {
     /// # Arguments
     /// * `sphere` - The bounding sphere.
     /// * `out_polygon` - The polygon that approximates the projected 2D ellipse of the sphere.
-    pub fn estimate_screenspace_for_bounding_sphere(
+    pub fn estimate_screen_space_for_bounding_sphere(
         &self,
         mut sphere: BoundingSphere,
     ) -> Result<f32> {
