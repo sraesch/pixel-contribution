@@ -1,8 +1,10 @@
-use anyhow::Result;
+use crate::{
+    polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D},
+    Result,
+};
 use log::info;
 use math::{transform_vec3, BoundingSphere, Frustum, IntersectionTestResult};
 use nalgebra_glm::{dot, Mat4, Vec2, Vec3};
-use pixel_contrib::polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D};
 
 /// An estimator for the footprint in pixels in the screen space.
 pub struct ScreenSpaceEstimator {

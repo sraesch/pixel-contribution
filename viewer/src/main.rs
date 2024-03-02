@@ -2,7 +2,6 @@ mod cad_model;
 mod geometry;
 mod logging;
 mod options;
-mod screen_space;
 mod sphere;
 
 use std::error::Error;
@@ -15,15 +14,13 @@ use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::PixelContributionMaps;
+use pixel_contrib::{screen_space::ScreenSpaceEstimator, PixelContributionMaps};
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
     EventHandler, FaceCulling, FrameBuffer, Key, MouseButton, NamedKey,
 };
 use sphere::Sphere;
-
-use crate::screen_space::ScreenSpaceEstimator;
 
 struct ViewerImpl {
     options: Options,
