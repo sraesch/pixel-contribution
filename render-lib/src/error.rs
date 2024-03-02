@@ -29,6 +29,9 @@ quick_error! {
         Camera(err: std::string::String) {
             display("{}", err)
         }
+        UI(err: std::string::String) {
+            display("{}", err)
+        }
         InvalidArgument(err: String) {
             display("{}", err)
         }

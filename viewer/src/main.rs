@@ -37,6 +37,8 @@ struct ViewerImpl {
     current_contrib_map_index: usize,
 
     pixel_contrib_maps: PixelContributionMaps,
+
+    ui: render_lib::ui::UI,
 }
 
 impl ViewerImpl {
@@ -66,6 +68,7 @@ impl ViewerImpl {
             sphere_transparency: 0.5,
             current_contrib_map_index: 0,
             pixel_contrib_maps,
+            ui: Default::default(),
         })
     }
 
@@ -124,6 +127,10 @@ impl EventHandler for ViewerImpl {
 
         self.camera.update_window_size(width, height);
         info!("setup...DONE");
+
+        info!("Initializing UI...");
+        self.ui.initialize()?;
+        info!("Initializing UI...DONE");
 
         Ok(())
     }
