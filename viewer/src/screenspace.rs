@@ -126,7 +126,15 @@ impl ScreenspaceEstimator {
             let ellipse_polygon: Polygon2D<16> =
                 self.create_polygon_from_ellipse(&sphere.center, larger_radius, radius);
 
-            Ok(0f32)
+            let full_area = ellipse_polygon.compute_area();
+            let partial_area =
+                ellipse_polygon.compute_area_with_overlapping_rectangle(self.width, self.height);
+
+            info!("Full area: {}, Partial area: {}", full_area, partial_area);
+            let ratio = partial_area / full_area;
+            info!("Ratio (%): {}", ratio * 100f32);
+
+            Ok(std::f32::consts::PI * radius * larger_radius * ratio)
         }
     }
 
