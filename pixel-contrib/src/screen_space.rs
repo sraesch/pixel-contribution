@@ -1,7 +1,4 @@
-use crate::{
-    polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D},
-    Result,
-};
+use crate::polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D};
 use log::info;
 use math::{transform_vec3, BoundingSphere, Frustum, IntersectionTestResult};
 use nalgebra_glm::{dot, Mat4, Vec2, Vec3};
@@ -72,23 +69,20 @@ impl ScreenSpaceEstimator {
     /// # Arguments
     /// * `sphere` - The bounding sphere.
     /// * `out_polygon` - The polygon that approximates the projected 2D ellipse of the sphere.
-    pub fn estimate_screen_space_for_bounding_sphere(
-        &self,
-        mut sphere: BoundingSphere,
-    ) -> Result<f32> {
+    pub fn estimate_screen_space_for_bounding_sphere(&self, mut sphere: BoundingSphere) -> f32 {
         // transform the sphere into view space
         sphere.center = transform_vec3(&self.model_view, &sphere.center);
 
         // Check special case where the camera is inside the sphere.
         // In this case, the footprint is the entire screen.
         if sphere.center.norm_squared() <= sphere.radius * sphere.radius {
-            return Ok(self.width * self.height);
+            return self.width * self.height;
         }
 
         // Test the bounding sphere with the frustum, i.e., check if the sphere is visible at all.
         let intersection_test = self.frustum.test_sphere(&sphere);
         if intersection_test == IntersectionTestResult::Outside {
-            return Ok(0.0);
+            return 0.0;
         }
 
         // 1. --- Compute the smaller radius of the projected 2D ellipse ---
@@ -138,7 +132,7 @@ impl ScreenSpaceEstimator {
 
         // 3. --- Compute the area of the ellipse ---
         if intersection_test == IntersectionTestResult::Inside {
-            Ok(std::f32::consts::PI * radius * larger_radius)
+            std::f32::consts::PI * radius * larger_radius
         } else {
             info!("Sphere is partially visible, but not completely.");
 
@@ -159,7 +153,7 @@ impl ScreenSpaceEstimator {
             let ratio = partial_area / full_area;
             info!("Ratio (%): {}", ratio * 100f32);
 
-            Ok(std::f32::consts::PI * radius * larger_radius * ratio)
+            std::f32::consts::PI * radius * larger_radius * ratio
         }
     }
 
@@ -272,9 +266,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!((result - 262207f32).abs() / 262207f32 < 1e-5);
     }
 
@@ -303,9 +295,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!((result - 47856f32).abs() / 47856f32 < 5e-3);
     }
 
@@ -334,9 +324,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!((result - 49536f32).abs() / 49536f32 < 5e-3);
     }
 
@@ -379,9 +367,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 59398f32).abs() / 59398f32 < 2e-2,
             "Result: {}, Should: {}",
@@ -429,9 +415,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 135952f32).abs() / 135952f32 < 1e-2,
             "Result: {}, Should: {}",
@@ -478,9 +462,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 443467f32).abs() / 443467f32 < 6e-2,
             "Result: {}, Should: {}",
@@ -514,9 +496,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 96079f32).abs() / 96079f32 < 5e-3,
             "Result: {}, Should: {}",
@@ -564,9 +544,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 103496f32).abs() / 103496f32 < 4e-2,
             "Result: {}, Should: {}",
@@ -614,9 +592,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 65179f32).abs() / 65179f32 < 1e-2,
             "Result: {}, Should: {}",
@@ -664,9 +640,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 155577f32).abs() / 155577f32 < 3e-2,
             "Result: {}, Should: {}",
@@ -712,9 +686,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 480000f32).abs() / 480000f32 < 1e-3,
             "Result: {}, Should: {}",
@@ -747,9 +719,7 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator
-            .estimate_screen_space_for_bounding_sphere(sphere)
-            .unwrap();
+        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert_eq!(result, 0f32);
     }
 }

@@ -290,8 +290,9 @@ impl EventHandler for ViewerImpl {
                         estimator.update_camera(model_view, projection_matrix, height);
 
                         let predicted_sphere_pixels = estimator
-                            .estimate_screen_space_for_bounding_sphere(self.bounding_sphere.clone())
-                            .unwrap();
+                            .estimate_screen_space_for_bounding_sphere(
+                                self.bounding_sphere.clone(),
+                            );
 
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
