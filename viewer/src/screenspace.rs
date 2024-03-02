@@ -141,7 +141,7 @@ impl ScreenspaceEstimator {
             info!("Sphere is partially visible, but not completely.");
 
             // create a polygonal approximation of the projected 2D ellipse
-            let ellipse_polygon: Polygon2D<16> = Self::create_polygon_from_ellipse(
+            let ellipse_polygon: Polygon2D<8> = Self::create_polygon_from_ellipse(
                 &ellipse_center,
                 &axis1,
                 &axis2,
