@@ -37,6 +37,8 @@ struct ViewerImpl {
     current_contrib_map_index: usize,
 
     pixel_contrib_maps: PixelContributionMaps,
+
+    ui: render_lib::ui::UI,
 }
 
 impl ViewerImpl {
@@ -66,6 +68,7 @@ impl ViewerImpl {
             sphere_transparency: 0.5,
             current_contrib_map_index: 0,
             pixel_contrib_maps,
+            ui: Default::default(),
         })
     }
 
@@ -125,6 +128,10 @@ impl EventHandler for ViewerImpl {
         self.camera.update_window_size(width, height);
         info!("setup...DONE");
 
+        info!("Initializing UI...");
+        self.ui.initialize(width as f32, height as f32)?;
+        info!("Initializing UI...DONE");
+
         Ok(())
     }
 
@@ -168,6 +175,8 @@ impl EventHandler for ViewerImpl {
         }
         configure_culling(FaceCulling::None);
         FrameBuffer::disable_blend();
+
+        self.ui.render().unwrap();
     }
 
     fn resize(&mut self, w: u32, h: u32) {
@@ -175,6 +184,7 @@ impl EventHandler for ViewerImpl {
 
         FrameBuffer::viewport(0, 0, w, h);
         self.camera.update_window_size(w, h);
+        self.ui.update_size(w as f32, h as f32);
     }
 
     fn cursor_move(&mut self, x: f64, y: f64) {
