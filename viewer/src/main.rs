@@ -108,6 +108,7 @@ impl EventHandler for ViewerImpl {
                 self.bounding_sphere = cad_model.get_bounding_sphere().clone();
 
                 info!("CAD-Data Bounding sphere: {:?}", self.bounding_sphere);
+                info!("CAD-Data AABB volume: {:?}", cad_model.get_aabb_volume());
 
                 self.camera.focus(&self.bounding_sphere).unwrap();
                 Some(cad_model)

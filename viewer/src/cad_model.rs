@@ -20,6 +20,7 @@ pub struct CADModel {
     uniform_combined_mat: render_lib::Uniform,
     uniform_model_view_mat: render_lib::Uniform,
 
+    aabb_volume: Aabb,
     bounding_sphere: BoundingSphere,
 }
 
@@ -141,6 +142,7 @@ impl CADModel {
             shader,
             uniform_combined_mat,
             uniform_model_view_mat,
+            aabb_volume: bounding_volume,
             bounding_sphere,
         })
     }
@@ -168,6 +170,12 @@ impl CADModel {
     #[inline]
     pub fn get_bounding_sphere(&self) -> &BoundingSphere {
         &self.bounding_sphere
+    }
+
+    /// Returns the AABB volume of the CAD model.
+    #[inline]
+    pub fn get_aabb_volume(&self) -> &Aabb {
+        &self.aabb_volume
     }
 
     /// Tries to load the cad data from the given path

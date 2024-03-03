@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'pixel-contrib-cli (Plane)'",
+            "name": "Debug executable 'pixel-contrib-cli (Plane-XZ)'",
             "cargo": {
                 "args": [
                     "build",
@@ -21,7 +21,7 @@
             },
             "args": [
                 "-i",
-                "${workspaceFolder}/test_data/models/plane.glb",
+                "${workspaceFolder}/test_data/models/plane_xz.glb",
                 "-p",
                 "32",
                 "-a",
@@ -55,7 +55,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'viewer' (Plane)",
+            "name": "Debug executable 'viewer' (Plane-XY)",
             "cargo": {
                 "args": [
                     "build",
@@ -69,9 +69,59 @@
             },
             "args": [
                 "-i",
-                "${workspaceFolder}/test_data/contrib_maps/plane_contrib_map.bin",
+                "${workspaceFolder}/test_data/contrib_maps/plane_xy_contrib_map.bin",
                 "-m",
-                "${workspaceFolder}/test_data/models/plane.glb",
+                "${workspaceFolder}/test_data/models/plane_xy.glb",
+                "-v",
+                "90"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'viewer' (Plane-XZ)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=viewer",
+                    "--package=viewer"
+                ],
+                "filter": {
+                    "name": "viewer",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-i",
+                "${workspaceFolder}/test_data/contrib_maps/plane_xz_contrib_map.bin",
+                "-m",
+                "${workspaceFolder}/test_data/models/plane_xz.glb",
+                "-v",
+                "90"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'viewer' (Plane-YZ)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=viewer",
+                    "--package=viewer"
+                ],
+                "filter": {
+                    "name": "viewer",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-i",
+                "${workspaceFolder}/test_data/contrib_maps/plane_yz_contrib_map.bin",
+                "-m",
+                "${workspaceFolder}/test_data/models/plane_yz.glb",
                 "-v",
                 "90"
             ],
