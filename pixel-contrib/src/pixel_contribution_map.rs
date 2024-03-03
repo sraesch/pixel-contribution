@@ -384,6 +384,8 @@ impl PixelContributionMapHeader {
 
 #[cfg(test)]
 mod test {
+    use std::io::Cursor;
+
     use super::*;
 
     #[test]
@@ -433,6 +435,82 @@ mod test {
                 let index = descriptor.index_from_camera_dir(dir);
 
                 assert_eq!(i, index);
+            }
+        }
+    }
+
+    /// Creates a list of directional vectors for testing.
+    fn create_directional_vectors() -> Vec<Vec3> {
+        let num = 20;
+        let pi = std::f32::consts::PI;
+        let pi_2 = std::f32::consts::FRAC_PI_2;
+
+        let mut result = Vec::new();
+        for i in 0..(num + 1) {
+            // beta is angle between -PI/2 and +PI/2
+            let beta: f32 = (i as f32) / (num as f32) * pi - pi_2;
+
+            // determine the radius on the 2D XY-plane
+            let r2 = beta.cos();
+
+            // determine value for Z
+            let z = beta.sin();
+
+            for j in 0..num {
+                // alpha is angle between 0 and 2 * PI
+                let alpha: f32 = (j as f32) / (num as f32) * 2.0 * pi;
+
+                // determine value for X and Y
+                let x = alpha.cos() * r2;
+                let y = alpha.sin() * r2;
+
+                let dir = Vec3::new(x, y, z);
+                result.push(dir);
+            }
+        }
+
+        result
+    }
+
+    /// Tests the interpolation of the pixel contribution maps for the exact angles and out of
+    /// range angles.
+    #[test]
+    fn test_pixel_contribution_interpolation_exact_match_and_out_of_range() {
+        // the list of the different contribution maps
+        let data1 = include_bytes!("../../test_data/contrib_maps/plane_xy_contrib_map.bin");
+        let data2 = include_bytes!("../../test_data/contrib_maps/plane_xz_contrib_map.bin");
+        let data3 = include_bytes!("../../test_data/contrib_maps/plane_yz_contrib_map.bin");
+        let data4 = include_bytes!("../../test_data/contrib_maps/2_boxes_contrib_map.bin");
+        let data5 = include_bytes!("../../test_data/contrib_maps/duck_contrib_map.bin");
+
+        // test the different data sets for the pixel contribution maps
+        let dirs = create_directional_vectors();
+        for data in [data1, data2, data3, data4, data5] {
+            let mut reader = Cursor::new(data);
+            let plane_contrib_maps = PixelContributionMaps::from_reader(&mut reader).unwrap();
+            let maps = plane_contrib_maps.get_maps();
+
+            for map in maps.iter() {
+                let angle = map.descriptor.camera_angle();
+
+                for dir in dirs.iter() {
+                    let p0 = map.get_pixel_contrib_for_camera_dir(*dir);
+                    let p1 = plane_contrib_maps.get_pixel_contrib_for_camera_dir(*dir, angle);
+
+                    assert_eq!(p0, p1);
+                }
+            }
+
+            // Test the out of range angle, i.e., an angle that is larger than the largest angle
+            // The result should be the same as for the largest angle.
+            let last_map = maps.last().unwrap();
+            let out_of_range_angle = maps.last().unwrap().descriptor.camera_angle() + 0.1;
+            for dir in dirs.iter() {
+                let p0 = last_map.get_pixel_contrib_for_camera_dir(*dir);
+                let p1 =
+                    plane_contrib_maps.get_pixel_contrib_for_camera_dir(*dir, out_of_range_angle);
+
+                assert_eq!(p0, p1);
             }
         }
     }
