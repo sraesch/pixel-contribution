@@ -1,12 +1,12 @@
 use crate::polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D};
-use log::info;
 use math::{transform_vec3, BoundingSphere, Frustum, IntersectionTestResult};
-use nalgebra_glm::{dot, Mat4, Vec2, Vec3};
+use nalgebra_glm::{mat4_to_mat3, zero, Mat3, Mat4, Vec2, Vec3};
 
 /// An estimator for the footprint in pixels in the screen space.
 pub struct ScreenSpaceEstimator {
-    /// The model view matrix.
-    model_view: Mat4,
+    /// The model view transformation.
+    model_view: Mat3,
+    model_view_translation: Vec3,
 
     /// The perspective matrix.
     perspective: Mat4,
@@ -14,8 +14,8 @@ pub struct ScreenSpaceEstimator {
     /// The frustum of the camera.
     frustum: Frustum,
 
-    /// The field of view in y-direction in radians.
-    fovy: f32,
+    /// tan(fovy / 2), where fovy the field of view in y-direction in radians is.
+    fovy_tan_2: f32,
 
     /// The width of the viewport in pixels.
     pub width: f32,
@@ -34,10 +34,11 @@ impl ScreenSpaceEstimator {
     /// Creates a new screen space estimator.
     pub fn new() -> Self {
         Self {
-            model_view: Mat4::identity(),
+            model_view: zero(),
+            model_view_translation: zero(),
             perspective: Mat4::identity(),
             frustum: Frustum::default(),
-            fovy: std::f32::consts::FRAC_PI_2,
+            fovy_tan_2: 1f32,
             width: 512.0,
             height: 512.0,
         }
@@ -50,10 +51,12 @@ impl ScreenSpaceEstimator {
     /// * `perspective` - The perspective matrix.
     /// * `height` - The height of the viewport in pixels.
     pub fn update_camera(&mut self, model_view: Mat4, perspective: Mat4, height: f32) {
-        self.model_view = model_view;
+        self.model_view = mat4_to_mat3(&model_view);
+        self.model_view_translation = model_view.column(3).xyz();
+
         self.perspective = perspective;
 
-        self.fovy = (1f32 / perspective.m22).atan() * 2.0;
+        self.fovy_tan_2 = 1f32 / perspective.m22;
 
         self.height = height;
 
@@ -71,7 +74,7 @@ impl ScreenSpaceEstimator {
     /// * `out_polygon` - The polygon that approximates the projected 2D ellipse of the sphere.
     pub fn estimate_screen_space_for_bounding_sphere(&self, mut sphere: BoundingSphere) -> f32 {
         // transform the sphere into view space
-        sphere.center = transform_vec3(&self.model_view, &sphere.center);
+        sphere.center = self.model_view * sphere.center + self.model_view_translation;
 
         // Check special case where the camera is inside the sphere.
         // In this case, the footprint is the entire screen.
@@ -87,19 +90,19 @@ impl ScreenSpaceEstimator {
 
         // 1. --- Compute the smaller radius of the projected 2D ellipse ---
         let radius =
-            estimate_bounding_sphere_radius_on_screen(self.fovy, &sphere) * self.height / 2.0;
+            estimate_bounding_sphere_radius_on_screen(self.fovy_tan_2, &sphere) * self.height / 2.0;
 
         // 2. --- Determine the larger radius ---
         // Determine the directional vector to the sphere center
-        let sphere_dir = sphere.center.normalize();
+        let sphere_distance = sphere.center.norm();
+        let sphere_dir = sphere.center / sphere_distance;
 
-        // Compute the angle between the camera direction and the sphere direction
-        let cam_dir: Vec3 = Vec3::new(0.0, 0.0, -1.0);
-        let sphere_dir_angle = dot(&cam_dir, &sphere_dir).acos();
+        // Compute the angle between the camera direction (0,0,-1) and the sphere direction
+        let sphere_dir_angle = (-sphere_dir.z).acos();
 
         // Compute half the angle of the sphere, i.e., the angle of the cone that tightly encloses
         // the sphere.
-        let sphere_angle = (sphere.radius / sphere.center.norm()).asin();
+        let sphere_angle = (sphere.radius / sphere_distance).asin();
 
         // We use the plane spanned by the camera direction vector and the vector that points to
         // the center of the sphere. The plane is orthogonal to the camera direction vector and
@@ -111,8 +114,8 @@ impl ScreenSpaceEstimator {
         let min_sphere_angle = sphere_dir_angle - sphere_angle;
         let max_sphere_angle = sphere_dir_angle + sphere_angle;
 
-        let x0 = min_sphere_angle.tan() / (self.fovy / 2f32).tan() * self.height * 0.25;
-        let x1 = max_sphere_angle.tan() / (self.fovy / 2f32).tan() * self.height * 0.25;
+        let x0 = min_sphere_angle.tan() / self.fovy_tan_2 * self.height * 0.25;
+        let x1 = max_sphere_angle.tan() / self.fovy_tan_2 * self.height * 0.25;
 
         let larger_radius = x1 - x0;
 
@@ -134,8 +137,6 @@ impl ScreenSpaceEstimator {
         if intersection_test == IntersectionTestResult::Inside {
             std::f32::consts::PI * radius * larger_radius
         } else {
-            info!("Sphere is partially visible, but not completely.");
-
             // create a polygonal approximation of the projected 2D ellipse
             let ellipse_polygon: Polygon2D<8> = Self::create_polygon_from_ellipse(
                 &ellipse_center,
@@ -149,9 +150,7 @@ impl ScreenSpaceEstimator {
             let partial_area =
                 ellipse_polygon.compute_area_with_overlapping_rectangle(self.width, self.height);
 
-            info!("Full area: {}, Partial area: {}", full_area, partial_area);
             let ratio = partial_area / full_area;
-            info!("Ratio (%): {}", ratio * 100f32);
 
             std::f32::consts::PI * radius * larger_radius * ratio
         }
@@ -220,22 +219,19 @@ impl ScreenSpaceEstimator {
 /// Note: This does not take the aspect ratio or the frustum into account.
 ///
 /// # Arguments
-/// * `fovy` - The field of view in y-direction in radians.
+/// * `fovy_tan_2` - The tan(fovy / 2), where fovy the field of view in y-direction in radians is.
 /// * `sphere` - The bounding sphere.
-fn estimate_bounding_sphere_radius_on_screen(fovy: f32, sphere: &BoundingSphere) -> f32 {
+fn estimate_bounding_sphere_radius_on_screen(fovy_tan_2: f32, sphere: &BoundingSphere) -> f32 {
     // The distance of the sphere projected onto the camera projection plane.
     let d = -sphere.center[2];
 
     // project the ray that tangentially touches the sphere onto the plane that is 'd' units away
     // from the camera
-    let phi = (sphere.radius / d).asin();
-    let projected_radius = phi.tan();
-
-    // now compute half the length of the side of the frustum at the distance 'd'
-    let r_capital = (fovy / 2.0).tan();
+    let x = sphere.radius / d;
+    let projected_radius = x / (1f32 - x * x).sqrt();
 
     // use this radius to estimate how much the screen is being filled by the sphere
-    projected_radius / r_capital
+    projected_radius / fovy_tan_2
 }
 
 #[cfg(test)]
