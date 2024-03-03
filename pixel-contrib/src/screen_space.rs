@@ -1,5 +1,5 @@
 use crate::polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D};
-use math::{transform_vec3, BoundingSphere, Frustum, IntersectionTestResult};
+use math::{BoundingSphere, Frustum, IntersectionTestResult};
 use nalgebra_glm::{mat4_to_mat3, zero, Mat3, Mat4, Vec2, Vec3};
 
 /// An estimator for the footprint in pixels in the screen space.
@@ -8,14 +8,14 @@ pub struct ScreenSpaceEstimator {
     model_view: Mat3,
     model_view_translation: Vec3,
 
-    /// The perspective matrix.
-    perspective: Mat4,
+    /// The compressed perspective matrix.
+    perspective: Vec2,
 
     /// The frustum of the camera.
     frustum: Frustum,
 
-    /// tan(fovy / 2), where fovy the field of view in y-direction in radians is.
-    fovy_tan_2: f32,
+    /// height * cotan(fovy / 2), where fovy the field of view in y-direction in radians is.
+    height_fovy_cotan_2: f32,
 
     /// The width of the viewport in pixels.
     pub width: f32,
@@ -36,9 +36,9 @@ impl ScreenSpaceEstimator {
         Self {
             model_view: zero(),
             model_view_translation: zero(),
-            perspective: Mat4::identity(),
+            perspective: Vec2::new(1f32, 1f32),
             frustum: Frustum::default(),
-            fovy_tan_2: 1f32,
+            height_fovy_cotan_2: 512.0,
             width: 512.0,
             height: 512.0,
         }
@@ -54,9 +54,9 @@ impl ScreenSpaceEstimator {
         self.model_view = mat4_to_mat3(&model_view);
         self.model_view_translation = model_view.column(3).xyz();
 
-        self.perspective = perspective;
+        self.perspective = Vec2::new(perspective.m11, perspective.m22);
 
-        self.fovy_tan_2 = 1f32 / perspective.m22;
+        self.height_fovy_cotan_2 = perspective.m22 * height;
 
         self.height = height;
 
@@ -89,8 +89,7 @@ impl ScreenSpaceEstimator {
         }
 
         // 1. --- Compute the smaller radius of the projected 2D ellipse ---
-        let radius =
-            estimate_bounding_sphere_radius_on_screen(self.fovy_tan_2, &sphere) * self.height / 2.0;
+        let radius = estimate_bounding_sphere_radius_on_screen(self.height_fovy_cotan_2, &sphere);
 
         // 2. --- Determine the larger radius ---
         // Determine the directional vector to the sphere center
@@ -114,29 +113,29 @@ impl ScreenSpaceEstimator {
         let min_sphere_angle = sphere_dir_angle - sphere_angle;
         let max_sphere_angle = sphere_dir_angle + sphere_angle;
 
-        let x0 = min_sphere_angle.tan() / self.fovy_tan_2 * self.height * 0.25;
-        let x1 = max_sphere_angle.tan() / self.fovy_tan_2 * self.height * 0.25;
+        let x0 = min_sphere_angle.tan() * self.height_fovy_cotan_2 * 0.25;
+        let x1 = max_sphere_angle.tan() * self.height_fovy_cotan_2 * 0.25;
 
         let larger_radius = x1 - x0;
-
-        // Determine the two axis of the 2D ellipse
-        let screen_center = Vec2::new(self.width, self.height) * 0.5;
-        let mut axis1 = self.project_onto_screen(&sphere.center) - screen_center;
-        if axis1.norm() < 1e-6 {
-            axis1 = Vec2::new(1.0, 0.0);
-        } else {
-            axis1 = axis1.normalize();
-        }
-
-        let axis2 = Vec2::new(-axis1[1], axis1[0]);
-
-        // Determine the center of the projected 2D ellipse on the screen
-        let ellipse_center: Vec2 = screen_center + axis1 * (x0 + x1);
 
         // 3. --- Compute the area of the ellipse ---
         if intersection_test == IntersectionTestResult::Inside {
             std::f32::consts::PI * radius * larger_radius
         } else {
+            // Determine the two axis of the 2D ellipse
+            let screen_center = Vec2::new(self.width, self.height) * 0.5;
+            let mut axis1 = self.project_onto_screen(&sphere.center) - screen_center;
+            if axis1.norm() < 1e-6 {
+                axis1 = Vec2::new(1.0, 0.0);
+            } else {
+                axis1 = axis1.normalize();
+            }
+
+            let axis2 = Vec2::new(-axis1[1], axis1[0]);
+
+            // Determine the center of the projected 2D ellipse on the screen
+            let ellipse_center: Vec2 = screen_center + axis1 * (x0 + x1);
+
             // create a polygonal approximation of the projected 2D ellipse
             let ellipse_polygon: Polygon2D<8> = Self::create_polygon_from_ellipse(
                 &ellipse_center,
@@ -161,7 +160,11 @@ impl ScreenSpaceEstimator {
     /// # Arguments
     /// * `view_space_pos` - The position in view space.
     fn project_onto_screen(&self, view_space_pos: &Vec3) -> Vec2 {
-        let clip_space_pos = transform_vec3(&self.perspective, view_space_pos);
+        let clip_space_pos = Vec2::new(
+            view_space_pos[0] * self.perspective[0],
+            view_space_pos[1] * self.perspective[1],
+        ) / -view_space_pos[2];
+
         Vec2::new(
             (clip_space_pos[0] + 1.0) * 0.5 * self.width,
             (clip_space_pos[1] + 1.0) * 0.5 * self.height,
@@ -213,15 +216,17 @@ impl ScreenSpaceEstimator {
     }
 }
 
-/// Estimates the radius of the bounding sphere on the screen in the range [0, 1].
-/// A value of 1 means that the sphere fills the screen completely.
+/// Estimates the radius of the bounding sphere on the screen in pixels.
 /// The position of the sphere is assumed to be in view space.
 /// Note: This does not take the aspect ratio or the frustum into account.
 ///
 /// # Arguments
-/// * `fovy_tan_2` - The tan(fovy / 2), where fovy the field of view in y-direction in radians is.
+/// * `height_fovy_cotan_2` - The height * cotan(fovy / 2), where fovy the field of view in y-direction in radians is.
 /// * `sphere` - The bounding sphere.
-fn estimate_bounding_sphere_radius_on_screen(fovy_tan_2: f32, sphere: &BoundingSphere) -> f32 {
+fn estimate_bounding_sphere_radius_on_screen(
+    height_fovy_cotan_2: f32,
+    sphere: &BoundingSphere,
+) -> f32 {
     // The distance of the sphere projected onto the camera projection plane.
     let d = -sphere.center[2];
 
@@ -231,7 +236,7 @@ fn estimate_bounding_sphere_radius_on_screen(fovy_tan_2: f32, sphere: &BoundingS
     let projected_radius = x / (1f32 - x * x).sqrt();
 
     // use this radius to estimate how much the screen is being filled by the sphere
-    projected_radius / fovy_tan_2
+    projected_radius * height_fovy_cotan_2 * 0.5
 }
 
 #[cfg(test)]
