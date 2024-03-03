@@ -126,6 +126,31 @@
                 "90"
             ],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'viewer' Duck",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=viewer",
+                    "--package=viewer"
+                ],
+                "filter": {
+                    "name": "viewer",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-i",
+                "${workspaceFolder}/test_data/contrib_maps/duck_contrib_map.bin",
+                "-m",
+                "${workspaceFolder}/test_data/models/duck.glb",
+                "-v",
+                "90"
+            ],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
