@@ -2,7 +2,6 @@ mod cad_model;
 mod geometry;
 mod logging;
 mod options;
-mod screenspace;
 mod sphere;
 
 use std::error::Error;
@@ -15,15 +14,13 @@ use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::PixelContributionMaps;
+use pixel_contrib::{screen_space::ScreenSpaceEstimator, PixelContributionMaps};
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
     EventHandler, FaceCulling, FrameBuffer, Key, MouseButton, NamedKey,
 };
 use sphere::Sphere;
-
-use crate::screenspace::ScreenspaceEstimator;
 
 struct ViewerImpl {
     options: Options,
@@ -289,12 +286,13 @@ impl EventHandler for ViewerImpl {
                             }
                         };
 
-                        let mut estimator = ScreenspaceEstimator::default();
+                        let mut estimator = ScreenSpaceEstimator::default();
                         estimator.update_camera(model_view, projection_matrix, height);
 
                         let predicted_sphere_pixels = estimator
-                            .estimate_screenspace_for_bounding_sphere(self.bounding_sphere.clone())
-                            .unwrap();
+                            .estimate_screen_space_for_bounding_sphere(
+                                self.bounding_sphere.clone(),
+                            );
 
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
