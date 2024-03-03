@@ -37,7 +37,9 @@ impl PixelContributionMaps {
     ///
     /// # Arguments
     /// * `maps` - The pixel contribution maps to use.
-    pub fn from_maps(maps: Vec<PixelContributionMap>) -> Self {
+    pub fn from_maps(mut maps: Vec<PixelContributionMap>) -> Self {
+        Self::sort_maps(&mut maps);
+
         Self { maps }
     }
 
@@ -47,11 +49,37 @@ impl PixelContributionMaps {
     /// * `map` - The pixel contribution map to add.
     pub fn add_map(&mut self, map: PixelContributionMap) {
         self.maps.push(map);
+        Self::sort_maps(&mut self.maps);
     }
 
     /// Returns a reference to the pixel contribution maps.
     pub fn get_maps(&self) -> &[PixelContributionMap] {
         &self.maps
+    }
+
+    /// Returns the pixel contribution for the given camera direction vector.
+    ///
+    /// # Arguments
+    /// * `dir` - The camera direction vector to the object.
+    /// * `angle` - The angle of the camera to return the contribution values for.
+    pub fn get_pixel_contrib_for_camera_dir(&self, dir: Vec3, angle: f32) -> f32 {
+        let (i0, i1) = self.search_starting_map_for_angle(angle);
+
+        let map0 = &self.maps[i0];
+        let p0 = map0.get_pixel_contrib_for_camera_dir(dir);
+        if let Some(i1) = i1 {
+            let map1 = &self.maps[i1];
+            let p1 = map1.get_pixel_contrib_for_camera_dir(dir);
+
+            let a0 = map0.descriptor.camera_angle();
+            let a1 = map1.descriptor.camera_angle();
+
+            let t = (a1 - angle) / (a1 - a0);
+
+            p0 * t + p1 * (1.0 - t)
+        } else {
+            p0
+        }
     }
 
     /// Writes the pixel contribution map to the given path as binary file.
@@ -102,7 +130,6 @@ impl PixelContributionMaps {
     /// * `path` - The path from which the pixel contribution should be read.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file = std::fs::File::open(path)?;
-
         Self::from_reader(&mut BufReader::new(file))
     }
 
@@ -141,7 +168,49 @@ impl PixelContributionMaps {
             });
         }
 
+        Self::sort_maps(&mut maps);
+
         Ok(Self { maps })
+    }
+
+    /// Helper function used to ensure that the maps are always sorted in ascending order w.r.t
+    /// their camera angles.
+    ///
+    /// # Arguments
+    /// * `maps` - The maps to sort.
+    fn sort_maps(maps: &mut [PixelContributionMap]) {
+        maps.sort_by(|m1, m2| {
+            m1.descriptor
+                .camera_angle()
+                .partial_cmp(&m2.descriptor.camera_angle())
+                .unwrap()
+        });
+    }
+
+    /// Searches for the pair of maps where the given angle is between their camera angles.
+    /// If the angle os out of range, only one angle is being returned.
+    ///
+    /// # Arguments
+    /// * `angle` - The given angle to search the pair of maps for.
+    fn search_starting_map_for_angle(&self, angle: f32) -> (usize, Option<usize>) {
+        for (i, m) in self.maps.iter().enumerate() {
+            let cur_angle = m.descriptor.camera_angle();
+
+            // If the current angle is already too large, then it must be the first element and we
+            // stop.
+            // If we've reached the end, we also stop here
+            if cur_angle > angle || i + 1 >= self.maps.len() {
+                return (i, None);
+            }
+
+            // get the next angle and check if it is larger or equal
+            let next_angle = self.maps[i + 1].descriptor.camera_angle();
+            if next_angle >= angle {
+                return (i, Some(i + 1));
+            }
+        }
+
+        (self.maps.len() - 1, None)
     }
 }
 
