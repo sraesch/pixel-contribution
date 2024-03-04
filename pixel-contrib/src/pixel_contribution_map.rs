@@ -71,10 +71,11 @@ impl PixelContributionMaps {
             let map1 = &self.maps[i1];
             let p1 = map1.get_pixel_contrib_for_camera_dir(dir);
 
-            let a0 = map0.descriptor.camera_angle();
-            let a1 = map1.descriptor.camera_angle();
+            let a0 = (map0.descriptor.camera_angle() / 2f32).tan();
+            let a1 = (map1.descriptor.camera_angle() / 2f32).tan();
+            let a = (angle / 2f32).tan();
 
-            let t = (a1 - angle) / (a1 - a0);
+            let t = (a1 - a) / (a1 - a0);
 
             p0 * t + p1 * (1.0 - t)
         } else {
