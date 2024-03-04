@@ -298,16 +298,15 @@ impl EventHandler for ViewerImpl {
                         let cam_dir =
                             nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
 
-                        let pixel_contrib =
-                            &self.pixel_contrib_maps.get_maps()[self.current_contrib_map_index];
-                        let pixel_contrib_value =
-                            pixel_contrib.get_pixel_contrib_for_camera_dir(cam_dir);
+                        let estimated_cam_angle =
+                            estimate_camera_angle(&cam_pos, &self.bounding_sphere);
+
+                        let pixel_contrib_value = self
+                            .pixel_contrib_maps
+                            .get_pixel_contrib_for_camera_dir(cam_dir, estimated_cam_angle);
 
                         let num_pixels =
                             (pixel_contrib_value * predicted_sphere_pixels).round() as usize;
-
-                        let estimated_cam_angle =
-                            estimate_camera_angle(&cam_pos, &self.bounding_sphere);
 
                         info!(" -- Prediction --");
                         info!("Camera direction: {:?}", cam_dir);
