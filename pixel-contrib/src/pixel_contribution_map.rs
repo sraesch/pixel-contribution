@@ -387,6 +387,8 @@ impl PixelContributionMapHeader {
 mod test {
     use std::io::Cursor;
 
+    use nalgebra_glm::Mat4;
+
     use super::*;
 
     #[test]
@@ -514,5 +516,95 @@ mod test {
                 assert_eq!(p0, p1);
             }
         }
+    }
+
+    /// Creates and returns a minimal set of pixel contribution maps for testing.
+    /// Only the orthographic and the last perspective pixel contribution map are left.
+    ///
+    /// # Arguments
+    /// * `maps` - The pixel contribution maps to use.
+    fn create_minimal_pixel_contribution_maps(
+        maps: &PixelContributionMaps,
+    ) -> PixelContributionMaps {
+        let maps = maps.get_maps();
+        let map0 = maps.first().unwrap().clone();
+        let map1 = maps.last().unwrap().clone();
+
+        let reduced_maps = vec![map0, map1];
+
+        PixelContributionMaps::from_maps(reduced_maps)
+    }
+
+    /// Computes the mean error and the standard deviation for the given errors.
+    ///
+    /// # Arguments
+    /// * `errors` - The errors to compute the statistics for.
+    fn compute_error_statistic(errors: &[f32]) -> (f32, f32) {
+        // calculate the mean error
+        let e = errors.iter().fold(0f32, |x, y| x + y) / errors.len() as f32;
+
+        // calculate the variance
+        let v = errors
+            .iter()
+            .map(|x| (x - e).powi(2))
+            .fold(0f32, |x, y| x + y)
+            / (errors.len() as f32 - 1f32);
+
+        (e, v.sqrt())
+    }
+
+    /// Computes the maximal error.
+    ///
+    /// # Arguments
+    /// * `errors` - The errors to compute the maximal error for.
+    fn compute_maximal_error(errors: &[f32]) -> f32 {
+        errors.iter().fold(0f32, |x, y| x.max(*y))
+    }
+
+    /// Test lookups for the pixel contribution maps.
+    #[test]
+    fn test_get_pixel_contrib_for_camera_dir() {
+        // load pixel contribution map
+        let duck = include_bytes!("../../test_data/contrib_maps/duck_contrib_map.bin");
+        let mut reader = Cursor::new(duck);
+        let plane_contrib_maps = PixelContributionMaps::from_reader(&mut reader).unwrap();
+        let maps = create_minimal_pixel_contribution_maps(&plane_contrib_maps);
+
+        // list of predefined camera configurations and the expected pixel contribution
+        struct Case {
+            pub description: &'static str,
+            pub model_view: Mat4,
+            pub projection: Mat4,
+            pub expected: f32,
+        }
+
+        let cases = [Case {
+            description: "Central in Camera",
+            model_view: Mat4::from_column_slice(&[
+                0.9998873,
+                0.0,
+                0.015014084,
+                0.0,
+                -0.00019451298,
+                0.9999161,
+                0.012953907,
+                0.0,
+                -0.015012824,
+                -0.012955368,
+                0.99980336,
+                0.0,
+                -0.1347784,
+                -0.8699033,
+                -1.5285844,
+                1.0,
+            ]),
+            projection: Mat4::from_column_slice(&[
+                0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.4601135, -1.0, 0.0, 0.0,
+                -1.3944056, 0.0,
+            ]),
+            expected: 0.16931562,
+        }];
+
+        for case in cases {}
     }
 }

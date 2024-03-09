@@ -9,12 +9,11 @@ use std::error::Error;
 use cad_model::CADModel;
 use clap::Parser;
 use log::{debug, error, info, trace};
-use math::extract_camera_position;
 use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::{screen_space::ScreenSpaceEstimator, PixelContributionMaps};
+use pixel_contrib::{PixelContribution, PixelContributionMaps};
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,
@@ -33,7 +32,7 @@ struct ViewerImpl {
     sphere_transparency: f32,
     current_contrib_map_index: usize,
 
-    pixel_contrib_maps: PixelContributionMaps,
+    pixel_contrib: PixelContribution,
 
     ui: render_lib::ui::UI,
 }
@@ -45,13 +44,12 @@ impl ViewerImpl {
             "Loading pixel contribution maps from {}...",
             options.pixel_contribution.display()
         );
-        let pixel_contrib_maps =
-            PixelContributionMaps::from_file(options.pixel_contribution.as_path())?;
+        let pixel_contrib = PixelContribution::from_file(options.pixel_contribution.as_path())?;
         info!(
             "Loading pixel contribution maps from {}...DONE",
             options.pixel_contribution.display()
         );
-        Self::print_pixel_contribution_maps_info(&pixel_contrib_maps);
+        Self::print_pixel_contribution_maps_info(pixel_contrib.get_maps());
 
         let mut camera = Camera::default();
         camera.get_data_mut().set_fovy(options.fovy.to_radians());
@@ -64,7 +62,7 @@ impl ViewerImpl {
             bounding_sphere: BoundingSphere::from((Vec3::new(0.0, 0.0, 0.0), 1.0)),
             sphere_transparency: 0.5,
             current_contrib_map_index: 0,
-            pixel_contrib_maps,
+            pixel_contrib,
             ui: Default::default(),
         })
     }
@@ -101,11 +99,11 @@ impl EventHandler for ViewerImpl {
     fn setup(&mut self, width: u32, height: u32) -> Result<(), Box<dyn Error>> {
         info!("setup...");
 
-        self.sphere.setup(&self.pixel_contrib_maps)?;
+        self.sphere.setup(self.pixel_contrib.get_maps())?;
 
         self.cad_model = match CADModel::new(&self.options.model_file) {
             Ok(cad_model) => {
-                self.bounding_sphere = cad_model.get_bounding_sphere().clone();
+                self.bounding_sphere = *cad_model.get_bounding_sphere();
 
                 info!("CAD-Data Bounding sphere: {:?}", self.bounding_sphere);
                 info!("CAD-Data AABB volume: {:?}", cad_model.get_aabb_volume());
@@ -249,15 +247,31 @@ impl EventHandler for ViewerImpl {
                 "m" => {
                     if pressed {
                         self.current_contrib_map_index = (self.current_contrib_map_index + 1)
-                            % self.pixel_contrib_maps.get_maps().len();
+                            % self.pixel_contrib.get_maps().get_maps().len();
 
-                        let contrib_map =
-                            &self.pixel_contrib_maps.get_maps()[self.current_contrib_map_index];
+                        let contrib_map = &self.pixel_contrib.get_maps().get_maps()
+                            [self.current_contrib_map_index];
                         info!(
                             "Switched to pixel contribution map (i={}, angle={:?})",
                             self.current_contrib_map_index,
                             contrib_map.descriptor.camera_angle().to_degrees()
                         );
+                    }
+                }
+                "i" => {
+                    if pressed {
+                        let (w, h, values) = FrameBuffer::get_depth_buffer_values();
+
+                        let num_rasterized_pixels = values.iter().filter(|v| **v != 1.0).count();
+                        let filled = num_rasterized_pixels as f32 / (w * h) as f32;
+
+                        info!("Filled pixels factor: {}", filled);
+
+                        let model_view = self.camera.get_data().get_model_matrix();
+                        let projection_matrix = self.camera.get_data().get_projection_matrix();
+
+                        info!("Model View Matrix: {:?}", model_view.as_slice());
+                        info!("Projection Matrix: {:?}", projection_matrix.as_slice());
                     }
                 }
                 "c" => {
@@ -267,70 +281,27 @@ impl EventHandler for ViewerImpl {
 
                         let num_rasterized_pixels = values.iter().filter(|v| **v != 1.0).count();
 
-                        let (model_view, projection_matrix, height) = {
+                        {
                             let data = self.camera.get_data();
-                            (
-                                data.get_model_matrix(),
-                                data.get_projection_matrix(),
-                                data.get_window_size().1 as f32,
-                            )
+
+                            self.pixel_contrib
+                                .update_camera(
+                                    data.get_model_matrix(),
+                                    data.get_projection_matrix(),
+                                    data.get_window_size().1 as f32,
+                                )
+                                .unwrap();
                         };
 
-                        let cam_pos = match extract_camera_position(&model_view) {
-                            Some(cam_pos) => {
-                                debug!("Camera position: {:?}", cam_pos);
-                                cam_pos
-                            }
-                            None => {
-                                error!("Failed to extract camera position from model view matrix");
-                                return;
-                            }
-                        };
+                        let predicated_pixels = self
+                            .pixel_contrib
+                            .estimate_pixel_contribution(&self.bounding_sphere);
 
-                        let mut estimator = ScreenSpaceEstimator::default();
-                        estimator.update_camera(model_view, projection_matrix, height);
-
-                        let predicted_sphere_pixels = estimator
-                            .estimate_screen_space_for_bounding_sphere(
-                                self.bounding_sphere.clone(),
-                            );
-
-                        let cam_dir =
-                            nalgebra_glm::normalize(&(self.bounding_sphere.center - cam_pos));
-
-                        let estimated_cam_angle =
-                            estimate_camera_angle(&cam_pos, &self.bounding_sphere);
-
-                        let pixel_contrib_value = self
-                            .pixel_contrib_maps
-                            .get_pixel_contrib_for_camera_dir(cam_dir, estimated_cam_angle);
-
-                        let num_pixels =
-                            (pixel_contrib_value * predicted_sphere_pixels).round() as usize;
-
-                        info!(" -- Prediction --");
-                        info!("Camera direction: {:?}", cam_dir);
+                        info!("Predicted pixels: {}", predicated_pixels);
+                        info!("Rasterized pixels: {}", num_rasterized_pixels);
                         info!(
-                            "Pixel contribution factor from map: {}",
-                            pixel_contrib_value
-                        );
-                        info!(
-                            "Estimated camera angle: {}",
-                            estimated_cam_angle.to_degrees()
-                        );
-
-                        info!(
-                            "Number of actually rasterized pixels (Framebuffer): {}",
-                            num_rasterized_pixels
-                        );
-                        info!(
-                            "Predicted number of filled pixels (Bounding Sphere): {}",
-                            predicted_sphere_pixels
-                        );
-                        info!("Predicted number of filled pixels: {}", num_pixels);
-                        info!(
-                            "Error: {}%",
-                            (num_pixels as f32 / num_rasterized_pixels as f32 - 1f32) * 100.0
+                            "Error %: {}",
+                            (predicated_pixels / num_rasterized_pixels as f32 - 1f32) * 100.0
                         );
                     }
                 }
@@ -338,16 +309,6 @@ impl EventHandler for ViewerImpl {
             }
         }
     }
-}
-
-/// Estimates the angle of the camera based on the bounding sphere.
-///
-/// # Arguments
-/// * `cam_pos` - The position of the camera.
-/// * `sphere` - The bounding sphere.
-fn estimate_camera_angle(cam_pos: &Vec3, sphere: &BoundingSphere) -> f32 {
-    let d = nalgebra_glm::distance(cam_pos, &sphere.center);
-    (sphere.radius / d).asin() * 2f32
 }
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.

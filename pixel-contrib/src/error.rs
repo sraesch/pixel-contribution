@@ -11,6 +11,9 @@ quick_error! {
         Internal(err: String) {
             display("{}", err)
         }
+        InvalidArgument(err: String) {
+            display("{}", err)
+        }
     }
 }
 
