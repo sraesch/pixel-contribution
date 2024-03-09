@@ -148,7 +148,28 @@
                 "-m",
                 "${workspaceFolder}/test_data/models/duck.glb",
                 "-v",
-                "90"
+                "70"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Analyze Duck contribution map",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=analyze_pixel_maps",
+                    "--package=analyze_pixel_maps"
+                ],
+                "filter": {
+                    "name": "analyze_pixel_maps",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-i",
+                "${workspaceFolder}/test_data/contrib_maps/duck_contrib_map.bin",
             ],
             "cwd": "${workspaceFolder}"
         }
