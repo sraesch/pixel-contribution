@@ -3,10 +3,10 @@ use std::{
     path::Path,
 };
 
+use byteorder::{ReadBytesExt, WriteBytesExt};
 use image::RgbImage;
 use nalgebra_glm::{Vec2, Vec3};
 use rasterizer::clamp;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     octahedron::{decode_octahedron_normal, encode_octahedron_normal},
@@ -17,7 +17,7 @@ const PIXEL_CONTRIBUTION_MAP_VERSION: u32 = 1;
 const PIXEL_CONTRIBUTION_MAP_IDENTIFIER: [u8; 4] = *b"PCMP";
 
 /// The pixel contribution maps for different configurations
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct PixelContributionMaps {
     maps: Vec<PixelContributionMap>,
 }
@@ -71,10 +71,27 @@ impl PixelContributionMaps {
     pub fn write_writer<W: Write>(&self, writer: &mut W) -> Result<()> {
         let header: PixelContributionMapHeader = Default::default();
 
-        writer.write_all(header.as_bytes())?;
+        // Write the header
+        writer.write_all(header.identifier.as_ref())?;
+        writer.write_u32::<byteorder::LittleEndian>(header.version)?;
 
-        bincode::serialize_into(writer, self)
-            .map_err(|e| Error::IO(format!("Failed to encode: {}", e)))?;
+        // Write the number of pixel contribution maps
+        writer.write_u32::<byteorder::LittleEndian>(self.maps.len() as u32)?;
+
+        // Write the pixel contribution maps
+        for map in &self.maps {
+            // Write the descriptor
+            let map_size = map.descriptor.map_size as u32;
+            let angle = map.descriptor.camera_angle;
+
+            writer.write_u32::<byteorder::LittleEndian>(map_size)?;
+            writer.write_f32::<byteorder::LittleEndian>(angle)?;
+
+            // Write the pixel contribution
+            for x in &map.pixel_contrib {
+                writer.write_f32::<byteorder::LittleEndian>(*x)?;
+            }
+        }
 
         Ok(())
     }
@@ -94,20 +111,42 @@ impl PixelContributionMaps {
     /// # Arguments
     /// * `reader` - The reader from which the pixel contribution should be read.
     pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self> {
-        let mut header: PixelContributionMapHeader = Default::default();
-        reader.read_exact(header.as_bytes_mut())?;
-
+        // Read the header and check if it is valid
+        let mut header = PixelContributionMapHeader::default();
+        reader.read_exact(header.identifier.as_mut())?;
+        header.version = reader.read_u32::<byteorder::LittleEndian>()?;
         header.check()?;
 
-        let pixel_contrib = bincode::deserialize_from(reader)
-            .map_err(|e| Error::IO(format!("Failed to decode: {}", e)))?;
+        // Read the number of pixel contribution maps
+        let num_maps = reader.read_u32::<byteorder::LittleEndian>()? as usize;
 
-        Ok(pixel_contrib)
+        // Read the pixel contribution maps
+        let mut maps = Vec::with_capacity(num_maps);
+        for _ in 0..num_maps {
+            // Read the descriptor
+            let map_size = reader.read_u32::<byteorder::LittleEndian>()? as usize;
+            let angle = reader.read_f32::<byteorder::LittleEndian>()?;
+
+            let descriptor = PixelContribColorMapDescriptor::new(map_size, angle);
+
+            // Read the pixel contribution
+            let mut pixel_contrib = Vec::with_capacity(map_size * map_size);
+            for _ in 0..map_size * map_size {
+                pixel_contrib.push(reader.read_f32::<byteorder::LittleEndian>()?);
+            }
+
+            maps.push(PixelContributionMap {
+                descriptor,
+                pixel_contrib,
+            });
+        }
+
+        Ok(Self { maps })
     }
 }
 
 /// The resulting pixel contribution for all possible views.
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct PixelContributionMap {
     pub descriptor: PixelContribColorMapDescriptor,
 
@@ -166,7 +205,7 @@ impl PixelContributionMap {
 }
 
 /// The descriptor for the pixel contribution map.
-#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct PixelContribColorMapDescriptor {
     /// The size of the quadratic pixel contribution map.
     map_size: usize,
@@ -238,7 +277,7 @@ impl PixelContribColorMapDescriptor {
 }
 
 /// The header for the pixel contribution map used for serialization.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct PixelContributionMapHeader {
     /// The identifier for the pixel contribution map file.
     identifier: [u8; 4],
@@ -271,26 +310,6 @@ impl PixelContributionMapHeader {
         }
 
         Ok(())
-    }
-
-    /// Returns the header as byte array.
-    pub fn as_bytes(&self) -> &[u8] {
-        unsafe {
-            std::slice::from_raw_parts(
-                self as *const PixelContributionMapHeader as *const u8,
-                std::mem::size_of::<PixelContributionMapHeader>(),
-            )
-        }
-    }
-
-    /// Returns the header as mutable byte array.
-    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        unsafe {
-            std::slice::from_raw_parts_mut(
-                self as *mut PixelContributionMapHeader as *mut u8,
-                std::mem::size_of::<PixelContributionMapHeader>(),
-            )
-        }
     }
 }
 
