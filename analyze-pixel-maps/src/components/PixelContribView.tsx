@@ -2,12 +2,35 @@ import { useEffect, useRef } from "react";
 import { PixelContributionMap } from "../pixel_contrib";
 import createColormap from "colormap";
 
+/**
+ * Callback for when a pixel is selected in the PixelContribView.
+ */
+export type OnSelectPixelContribSample = (pos_x: number, pos_y: number, angle: number) => void;
+
 export interface PixelContribViewProps {
     pixelContrib: PixelContributionMap;
+    onSelectPixelContribSample?: OnSelectPixelContribSample;
 }
 
 export function PixelContribView(props: PixelContribViewProps): JSX.Element {
-    const { pixelContrib } = props;
+    const { pixelContrib, onSelectPixelContribSample } = props;
+
+    const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>, angle: number) => {
+        if (!onSelectPixelContribSample) {
+            return;
+        }
+
+        const canvas = event.currentTarget;
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        const map_size = pixelContrib.descriptor.map_size;
+        const pos_x = Math.floor((x / rect.width) * map_size);
+        const pos_y = Math.floor((y / rect.height) * map_size);
+
+        onSelectPixelContribSample(pos_x, pos_y, angle);
+    }
 
     const canvasRef = useRef<null | HTMLCanvasElement>(null);
 
@@ -55,6 +78,9 @@ export function PixelContribView(props: PixelContribViewProps): JSX.Element {
     }, [pixelContrib]);
 
     return (
-        <canvas ref={canvasRef} width={pixelContrib.descriptor.map_size} height={pixelContrib.descriptor.map_size} />
+        <canvas ref={canvasRef}
+                width={pixelContrib.descriptor.map_size}
+                height={pixelContrib.descriptor.map_size}
+                onClick={event => handleCanvasClick(event, pixelContrib.descriptor.camera_angle)} />
     );
 }

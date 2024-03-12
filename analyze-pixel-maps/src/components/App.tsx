@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PixelContributionMap, load_from_url } from "../pixel_contrib";
-import { PixelContribView } from "./PixelContribView";
+import { PixelContribViews } from "./PixelContribViews";
+import { InterpolateAngleGraph } from "./InterpolateAngleGraph";
 
 /**
  * @returns {string | null} - The pixel contribution URL from the query string, or null if it is
@@ -14,6 +15,7 @@ function getPixelContribURL(): string | null {
 
 function App(): JSX.Element {
   const [pixelContrib, setPixelContrib] = useState<PixelContributionMap[]>([]);
+  const [contribPos, setContribPos] = useState<null | [number, number]>(null);
 
   // load pixel contribution data from a URL
   useEffect(() => {
@@ -27,21 +29,24 @@ function App(): JSX.Element {
     }
   }, []);
 
+  const handleSelectPixelContribSample = (pos_x: number, pos_y: number, angle: number) => {
+    console.log(`Selected pixel sample at (${pos_x}, ${pos_y}) with angle ${angle}`);
+    setContribPos([pos_x, pos_y]);
+  };
+
   return (
     <main>
-      {pixelContrib.map((contrib, i) => {
-        // convert angle from radians to degrees and round it
-        const angle = Math.round(contrib.descriptor.camera_angle * 180 / Math.PI);
-
-        return (
-          <div key={i} style={{
-            margin: "1em",
-          }}>
-            <h2>Camera Angle: {angle}</h2>
-            <PixelContribView pixelContrib={contrib} />
-          </div>
-        );
-      })}
+      <PixelContribViews pixelContribMaps={pixelContrib} onSelectPixelContribSample={handleSelectPixelContribSample} />
+      <div style={{
+        width: "90%",
+        height: "90%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        margin: "4em",
+      }}>
+        <InterpolateAngleGraph contrib_maps={pixelContrib} pos={contribPos} />
+      </div>
     </main>
   )
 }
