@@ -4,6 +4,7 @@ import { InterpolateAngleGraph } from "./InterpolateAngleGraph";
 import { PixelContribErrorViews } from "./PixelContribErrorViews";
 import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
 import { PixelContributionMaps } from 'rs-analyze-pixel-maps';
+import { SphereView } from "./SphereView";
 
 /**
  * @returns {string | null} - The pixel contribution URL from the query string, or null if it is
@@ -58,9 +59,13 @@ function App(): JSX.Element {
       }}>
         <InterpolateAngleGraph contrib_maps={pixelContrib} pos={contribPos} />
       </div>
-      <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
-      <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
-      <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
+      <div>
+        <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
+        <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
+        <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
+      </div>
+
+      <SphereView contrib_maps={pixelContrib} />
     </main>
   )
 }

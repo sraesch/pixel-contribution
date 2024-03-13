@@ -5,6 +5,7 @@ use std::{cell::RefCell, rc::Rc};
 
 pub use interpolate::*;
 pub use math;
+use nalgebra_glm::Vec3;
 pub use utils::*;
 
 mod interpolate;
@@ -231,6 +232,14 @@ pub struct PixelContribColorMapDescriptor {
     /// The camera angle for the pixel contribution map. The angle is in radians.
     /// A value of 0 means that the camera is orthographic.
     pub camera_angle: f32,
+}
+
+#[wasm_bindgen]
+impl PixelContribColorMapDescriptor {
+    pub fn index_from_camera_dir(&self, dir_x: f32, dir_y: f32, dir_z: f32) -> usize {
+        pixel_contrib_types::PixelContribColorMapDescriptor::new(self.map_size, self.camera_angle)
+            .index_from_camera_dir(Vec3::new(dir_x, dir_y, dir_z))
+    }
 }
 
 impl From<pixel_contrib_types::PixelContribColorMapDescriptor> for PixelContribColorMapDescriptor {
