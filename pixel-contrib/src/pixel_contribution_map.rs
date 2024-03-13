@@ -37,7 +37,9 @@ impl PixelContributionMaps {
     ///
     /// # Arguments
     /// * `maps` - The pixel contribution maps to use.
-    pub fn from_maps(maps: Vec<PixelContributionMap>) -> Self {
+    pub fn from_maps(mut maps: Vec<PixelContributionMap>) -> Self {
+        Self::sort_maps(&mut maps);
+
         Self { maps }
     }
 
@@ -47,11 +49,38 @@ impl PixelContributionMaps {
     /// * `map` - The pixel contribution map to add.
     pub fn add_map(&mut self, map: PixelContributionMap) {
         self.maps.push(map);
+        Self::sort_maps(&mut self.maps);
     }
 
     /// Returns a reference to the pixel contribution maps.
     pub fn get_maps(&self) -> &[PixelContributionMap] {
         &self.maps
+    }
+
+    /// Returns the pixel contribution for the given camera direction vector.
+    ///
+    /// # Arguments
+    /// * `dir` - The camera direction vector to the object.
+    /// * `angle` - The angle of the camera to return the contribution values for.
+    pub fn get_pixel_contrib_for_camera_dir(&self, dir: Vec3, angle: f32) -> f32 {
+        let (i0, i1) = self.search_starting_map_for_angle(angle);
+
+        let map0 = &self.maps[i0];
+        let p0 = map0.get_pixel_contrib_for_camera_dir(dir);
+        if let Some(i1) = i1 {
+            let map1 = &self.maps[i1];
+            let p1 = map1.get_pixel_contrib_for_camera_dir(dir);
+
+            let a0 = (map0.descriptor.camera_angle() / 2f32).tan();
+            let a1 = (map1.descriptor.camera_angle() / 2f32).tan();
+            let a = (angle / 2f32).tan();
+
+            let t = (a1 - a) / (a1 - a0);
+
+            p0 * t + p1 * (1.0 - t)
+        } else {
+            p0
+        }
     }
 
     /// Writes the pixel contribution map to the given path as binary file.
@@ -102,7 +131,6 @@ impl PixelContributionMaps {
     /// * `path` - The path from which the pixel contribution should be read.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file = std::fs::File::open(path)?;
-
         Self::from_reader(&mut BufReader::new(file))
     }
 
@@ -141,7 +169,49 @@ impl PixelContributionMaps {
             });
         }
 
+        Self::sort_maps(&mut maps);
+
         Ok(Self { maps })
+    }
+
+    /// Helper function used to ensure that the maps are always sorted in ascending order w.r.t
+    /// their camera angles.
+    ///
+    /// # Arguments
+    /// * `maps` - The maps to sort.
+    fn sort_maps(maps: &mut [PixelContributionMap]) {
+        maps.sort_by(|m1, m2| {
+            m1.descriptor
+                .camera_angle()
+                .partial_cmp(&m2.descriptor.camera_angle())
+                .unwrap()
+        });
+    }
+
+    /// Searches for the pair of maps where the given angle is between their camera angles.
+    /// If the angle os out of range, only one angle is being returned.
+    ///
+    /// # Arguments
+    /// * `angle` - The given angle to search the pair of maps for.
+    fn search_starting_map_for_angle(&self, angle: f32) -> (usize, Option<usize>) {
+        for (i, m) in self.maps.iter().enumerate() {
+            let cur_angle = m.descriptor.camera_angle();
+
+            // If the current angle is already too large, then it must be the first element and we
+            // stop.
+            // If we've reached the end, we also stop here
+            if cur_angle > angle || i + 1 >= self.maps.len() {
+                return (i, None);
+            }
+
+            // get the next angle and check if it is larger or equal
+            let next_angle = self.maps[i + 1].descriptor.camera_angle();
+            if next_angle >= angle {
+                return (i, Some(i + 1));
+            }
+        }
+
+        (self.maps.len() - 1, None)
     }
 }
 
@@ -315,6 +385,10 @@ impl PixelContributionMapHeader {
 
 #[cfg(test)]
 mod test {
+    use std::io::Cursor;
+
+    use nalgebra_glm::Mat4;
+
     use super::*;
 
     #[test]
@@ -366,5 +440,171 @@ mod test {
                 assert_eq!(i, index);
             }
         }
+    }
+
+    /// Creates a list of directional vectors for testing.
+    fn create_directional_vectors() -> Vec<Vec3> {
+        let num = 20;
+        let pi = std::f32::consts::PI;
+        let pi_2 = std::f32::consts::FRAC_PI_2;
+
+        let mut result = Vec::new();
+        for i in 0..(num + 1) {
+            // beta is angle between -PI/2 and +PI/2
+            let beta: f32 = (i as f32) / (num as f32) * pi - pi_2;
+
+            // determine the radius on the 2D XY-plane
+            let r2 = beta.cos();
+
+            // determine value for Z
+            let z = beta.sin();
+
+            for j in 0..num {
+                // alpha is angle between 0 and 2 * PI
+                let alpha: f32 = (j as f32) / (num as f32) * 2.0 * pi;
+
+                // determine value for X and Y
+                let x = alpha.cos() * r2;
+                let y = alpha.sin() * r2;
+
+                let dir = Vec3::new(x, y, z);
+                result.push(dir);
+            }
+        }
+
+        result
+    }
+
+    /// Tests the interpolation of the pixel contribution maps for the exact angles and out of
+    /// range angles.
+    #[test]
+    fn test_pixel_contribution_interpolation_exact_match_and_out_of_range() {
+        // the list of the different contribution maps
+        let data1 = include_bytes!("../../test_data/contrib_maps/plane_xy_contrib_map.bin");
+        let data2 = include_bytes!("../../test_data/contrib_maps/plane_xz_contrib_map.bin");
+        let data3 = include_bytes!("../../test_data/contrib_maps/plane_yz_contrib_map.bin");
+        let data4 = include_bytes!("../../test_data/contrib_maps/2_boxes_contrib_map.bin");
+        let data5 = include_bytes!("../../test_data/contrib_maps/duck_contrib_map.bin");
+
+        // test the different data sets for the pixel contribution maps
+        let dirs = create_directional_vectors();
+        for data in [data1, data2, data3, data4, data5] {
+            let mut reader = Cursor::new(data);
+            let plane_contrib_maps = PixelContributionMaps::from_reader(&mut reader).unwrap();
+            let maps = plane_contrib_maps.get_maps();
+
+            for map in maps.iter() {
+                let angle = map.descriptor.camera_angle();
+
+                for dir in dirs.iter() {
+                    let p0 = map.get_pixel_contrib_for_camera_dir(*dir);
+                    let p1 = plane_contrib_maps.get_pixel_contrib_for_camera_dir(*dir, angle);
+
+                    assert_eq!(p0, p1);
+                }
+            }
+
+            // Test the out of range angle, i.e., an angle that is larger than the largest angle
+            // The result should be the same as for the largest angle.
+            let last_map = maps.last().unwrap();
+            let out_of_range_angle = maps.last().unwrap().descriptor.camera_angle() + 0.1;
+            for dir in dirs.iter() {
+                let p0 = last_map.get_pixel_contrib_for_camera_dir(*dir);
+                let p1 =
+                    plane_contrib_maps.get_pixel_contrib_for_camera_dir(*dir, out_of_range_angle);
+
+                assert_eq!(p0, p1);
+            }
+        }
+    }
+
+    /// Creates and returns a minimal set of pixel contribution maps for testing.
+    /// Only the orthographic and the last perspective pixel contribution map are left.
+    ///
+    /// # Arguments
+    /// * `maps` - The pixel contribution maps to use.
+    fn create_minimal_pixel_contribution_maps(
+        maps: &PixelContributionMaps,
+    ) -> PixelContributionMaps {
+        let maps = maps.get_maps();
+        let map0 = maps.first().unwrap().clone();
+        let map1 = maps.last().unwrap().clone();
+
+        let reduced_maps = vec![map0, map1];
+
+        PixelContributionMaps::from_maps(reduced_maps)
+    }
+
+    /// Computes the mean error and the standard deviation for the given errors.
+    ///
+    /// # Arguments
+    /// * `errors` - The errors to compute the statistics for.
+    fn compute_error_statistic(errors: &[f32]) -> (f32, f32) {
+        // calculate the mean error
+        let e = errors.iter().fold(0f32, |x, y| x + y) / errors.len() as f32;
+
+        // calculate the variance
+        let v = errors
+            .iter()
+            .map(|x| (x - e).powi(2))
+            .fold(0f32, |x, y| x + y)
+            / (errors.len() as f32 - 1f32);
+
+        (e, v.sqrt())
+    }
+
+    /// Computes the maximal error.
+    ///
+    /// # Arguments
+    /// * `errors` - The errors to compute the maximal error for.
+    fn compute_maximal_error(errors: &[f32]) -> f32 {
+        errors.iter().fold(0f32, |x, y| x.max(*y))
+    }
+
+    /// Test lookups for the pixel contribution maps.
+    #[test]
+    fn test_get_pixel_contrib_for_camera_dir() {
+        // load pixel contribution map
+        let duck = include_bytes!("../../test_data/contrib_maps/duck_contrib_map.bin");
+        let mut reader = Cursor::new(duck);
+        let plane_contrib_maps = PixelContributionMaps::from_reader(&mut reader).unwrap();
+        let maps = create_minimal_pixel_contribution_maps(&plane_contrib_maps);
+
+        // list of predefined camera configurations and the expected pixel contribution
+        struct Case {
+            pub description: &'static str,
+            pub model_view: Mat4,
+            pub projection: Mat4,
+            pub expected: f32,
+        }
+
+        let cases = [Case {
+            description: "Central in Camera",
+            model_view: Mat4::from_column_slice(&[
+                0.9998873,
+                0.0,
+                0.015014084,
+                0.0,
+                -0.00019451298,
+                0.9999161,
+                0.012953907,
+                0.0,
+                -0.015012824,
+                -0.012955368,
+                0.99980336,
+                0.0,
+                -0.1347784,
+                -0.8699033,
+                -1.5285844,
+                1.0,
+            ]),
+            projection: Mat4::from_column_slice(&[
+                0.75, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.4601135, -1.0, 0.0, 0.0,
+                -1.3944056, 0.0,
+            ]),
+            expected: 0.16931562,
+        }];
+
+        for case in cases {}
     }
 }

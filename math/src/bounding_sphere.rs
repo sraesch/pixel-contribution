@@ -3,7 +3,7 @@ use nalgebra_glm::{distance2, Vec3};
 use crate::Aabb;
 
 /// A conservative bounding sphere that encloses a set of objects.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct BoundingSphere {
     /// The center of the bounding sphere.
     pub center: Vec3,

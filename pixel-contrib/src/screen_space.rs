@@ -2,6 +2,20 @@ use crate::polygon_2d::{ArrayConstructor, ArrayConstructorTrait, Polygon2D};
 use math::{BoundingSphere, Frustum, IntersectionTestResult};
 use nalgebra_glm::{mat4_to_mat3, zero, Mat3, Mat4, Vec2, Vec3};
 
+/// The result of the screen space estimation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScreenSpaceResult {
+    /// The camera is inside the bounding sphere and thus the entire screen is covered.
+    InsideSphere,
+
+    /// The bounding sphere is completely outside the frustum and thus not visible at all.
+    SphereInvisible,
+
+    /// The bounding sphere is partially visible and the result contains the estimated number of
+    /// pixels that are covered by the sphere.
+    PartiallyVisible,
+}
+
 /// An estimator for the footprint in pixels in the screen space.
 pub struct ScreenSpaceEstimator {
     /// The model view transformation.
@@ -67,25 +81,29 @@ impl ScreenSpaceEstimator {
     }
 
     /// Estimates the footprint in pixels on the screen for the given bounding sphere.
-    /// The result is the overall estimated number of pixels of sphere, projected onto the screen in pixels.
+    /// The result is the overall estimated number of pixels of sphere, projected onto the screen
+    /// in pixels with the classification of the visibility of the sphere.
     ///
     /// # Arguments
     /// * `sphere` - The bounding sphere.
     /// * `out_polygon` - The polygon that approximates the projected 2D ellipse of the sphere.
-    pub fn estimate_screen_space_for_bounding_sphere(&self, mut sphere: BoundingSphere) -> f32 {
+    pub fn estimate_screen_space_for_bounding_sphere(
+        &self,
+        mut sphere: BoundingSphere,
+    ) -> (f32, ScreenSpaceResult) {
         // transform the sphere into view space
         sphere.center = self.model_view * sphere.center + self.model_view_translation;
 
         // Check special case where the camera is inside the sphere.
         // In this case, the footprint is the entire screen.
         if sphere.center.norm_squared() <= sphere.radius * sphere.radius {
-            return self.width * self.height;
+            return (self.width * self.height, ScreenSpaceResult::InsideSphere);
         }
 
         // Test the bounding sphere with the frustum, i.e., check if the sphere is visible at all.
         let intersection_test = self.frustum.test_sphere(&sphere);
         if intersection_test == IntersectionTestResult::Outside {
-            return 0.0;
+            return (0f32, ScreenSpaceResult::SphereInvisible);
         }
 
         // 1. --- Compute the smaller radius of the projected 2D ellipse ---
@@ -120,7 +138,10 @@ impl ScreenSpaceEstimator {
 
         // 3. --- Compute the area of the ellipse ---
         if intersection_test == IntersectionTestResult::Inside {
-            std::f32::consts::PI * radius * larger_radius
+            (
+                std::f32::consts::PI * radius * larger_radius,
+                ScreenSpaceResult::PartiallyVisible,
+            )
         } else {
             // Determine the two axis of the 2D ellipse
             let screen_center = Vec2::new(self.width, self.height) * 0.5;
@@ -151,7 +172,10 @@ impl ScreenSpaceEstimator {
 
             let ratio = partial_area / full_area;
 
-            std::f32::consts::PI * radius * larger_radius * ratio
+            (
+                std::f32::consts::PI * radius * larger_radius * ratio,
+                ScreenSpaceResult::PartiallyVisible,
+            )
         }
     }
 
@@ -267,8 +291,9 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!((result - 262207f32).abs() / 262207f32 < 1e-5);
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is partially visible. The sphere is
@@ -296,8 +321,9 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!((result - 47856f32).abs() / 47856f32 < 5e-3);
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is partially visible. The sphere is
@@ -325,8 +351,9 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!((result - 49536f32).abs() / 49536f32 < 5e-3);
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is partially visible. The sphere is
@@ -368,13 +395,14 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 59398f32).abs() / 59398f32 < 2e-2,
             "Result: {}, Should: {}",
             result,
             59398f32
         );
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is partially visible. The sphere is
@@ -416,13 +444,14 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 135952f32).abs() / 135952f32 < 1e-2,
             "Result: {}, Should: {}",
             result,
             135952f32
         );
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is very big and does not fit on the
@@ -463,13 +492,14 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 443467f32).abs() / 443467f32 < 6e-2,
             "Result: {}, Should: {}",
             result,
             443467f32
         );
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is at the bottom right corner and only
@@ -497,13 +527,14 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 96079f32).abs() / 96079f32 < 5e-3,
             "Result: {}, Should: {}",
             result,
             96079f32
         );
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is at the top right corner and only
@@ -545,13 +576,14 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 103496f32).abs() / 103496f32 < 4e-2,
             "Result: {}, Should: {}",
             result,
             103496f32
         );
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is at the top left corner and only
@@ -593,13 +625,14 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 65179f32).abs() / 65179f32 < 1e-2,
             "Result: {}, Should: {}",
             result,
             65179f32
         );
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere that is at the bottom left corner and only
@@ -641,13 +674,14 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 155577f32).abs() / 155577f32 < 3e-2,
             "Result: {}, Should: {}",
             result,
             155577f32
         );
+        assert_eq!(classification, ScreenSpaceResult::PartiallyVisible);
     }
 
     /// Tests the screen space estimator with a sphere where the camera is fully inside the sphere.
@@ -687,13 +721,14 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert!(
             (result - 480000f32).abs() / 480000f32 < 1e-3,
             "Result: {}, Should: {}",
             result,
             480000f32
         );
+        assert_eq!(classification, ScreenSpaceResult::InsideSphere);
     }
 
     /// Tests the screen space estimator with a sphere outside the camera frustum.
@@ -720,7 +755,8 @@ mod test {
             radius: std::f32::consts::SQRT_2,
         };
 
-        let result = estimator.estimate_screen_space_for_bounding_sphere(sphere);
+        let (result, classification) = estimator.estimate_screen_space_for_bounding_sphere(sphere);
         assert_eq!(result, 0f32);
+        assert_eq!(classification, ScreenSpaceResult::SphereInvisible);
     }
 }
