@@ -1,3 +1,4 @@
+import { vec2, vec3 } from "gl-matrix";
 
 class Header {
     magic: string;
@@ -37,6 +38,21 @@ export class PixelContribMapDescriptor {
         this.map_size = map_size;
         this.camera_angle = camera_angle;
     }
+
+    /// Returns the index for the given camera direction vector.
+    ///
+    /// # Arguments
+    /// * `dir` - The camera direction vector to the object.
+    public index_from_camera_dir(dir: vec3): number {
+        const uv: vec2 = encode_octahedron_normal(dir);
+        vec2.scale(uv, uv, this.map_size);
+        vec2.sub(uv, uv, vec2.fromValues(0.5, 0.5));
+
+        const u = clamp(Math.round(uv[0]), 0, this.map_size - 1);
+        const v = clamp(Math.round(uv[1]), 0, this.map_size - 1);
+
+        return v * this.map_size + u;
+    }
 }
 
 /**
@@ -61,6 +77,8 @@ export class PixelContributionMap {
  * Load pixel contribution data from a URL.
  * 
  * @param url {string} - The URL to load the pixel contribution data from.
+ * 
+ * @returns {Promise<PixelContributionMap[]>} - The pixel contribution data.
  */
 export async function load_from_url(url: string): Promise<PixelContributionMap[]> {
     const response = await fetch(url);
@@ -95,4 +113,77 @@ export async function load_from_url(url: string): Promise<PixelContributionMap[]
     }
 
     return maps;
+}
+
+/**
+ * Consumes a normal and returns the encoded octahedron normal as a 2D vector in the range [0, 1].
+ * 
+ * @param in_normal - The normal to encode
+ * 
+ * @returns {vec2} - The encoded normal as a 2D vector in the range [0, 1].
+ */
+export function encode_octahedron_normal(in_normal: vec3): vec2 {
+    const normal = vec3.normalize(vec3.create(), in_normal);
+    const abs_sum = Math.abs(normal[0]) + Math.abs(normal[1]) + Math.abs(normal[2]);
+
+    normal[0] /= abs_sum;
+    normal[1] /= abs_sum;
+
+    if (normal[2] < 0.0) {
+        const tmp = normal[0];
+        normal[0] = wrap_octahedron_normal_value(normal[0], normal[1]);
+        normal[1] = wrap_octahedron_normal_value(normal[1], tmp);
+    }
+
+    return vec2.fromValues(normal[0] * 0.5 + 0.5, normal[1] * 0.5 + 0.5);
+}
+
+/**
+ * Consumes a normal encoded as octahedron in the range [0,1] and returns the decoded normal.
+ * 
+ * @param octahedron - The normal encoded as octahedron.
+ * 
+ * @returns {vec3} - The decoded normal.
+ */
+export function decode_octahedron_normal(in_octahedron: vec2): vec3 {
+    const octahedron = vec2.scale(vec2.create(), in_octahedron, 2.0);
+    vec2.sub(octahedron, octahedron, vec2.fromValues(1.0, 1.0));
+
+    const z = 1.0 - Math.abs(octahedron[0]) - Math.abs(octahedron[1]);
+
+    const x = z >= 0.0 ? octahedron[0] : wrap_octahedron_normal_value(octahedron[0], octahedron[1]);
+    const y = z >= 0.0 ? octahedron[1] : wrap_octahedron_normal_value(octahedron[1], octahedron[0]);
+
+    return vec3.normalize(vec3.create(), vec3.fromValues(x, y, z));
+}
+
+/**
+ * Wraps the octahedron normal value.
+ * 
+ * @param x - The x value to wrap.
+ * @param y - The y value to wrap.
+ * 
+ * @returns {number} - The wrapped value.
+ */
+function wrap_octahedron_normal_value(v1: number, v2: number): number {
+    return (1.0 - Math.abs(v2)) * ((v1 >= 0.0) ? 1.0 : -1.0);
+}
+
+/**
+ * Constraint a value to lie between two further values.
+ * 
+ * @param x - The value to constraint.
+ * @param min_value - The lower bound for the value constraint.
+ * @param max_value - The upper bound for the value constraint.
+ * 
+ * @returns {number} - The constrained value.
+ */
+export function clamp(x: number, min_value: number, max_value: number): number {
+    if (x < min_value) {
+        return min_value;
+    } else if (x > max_value) {
+        return max_value;
+    } else {
+        return x;
+    }
 }
