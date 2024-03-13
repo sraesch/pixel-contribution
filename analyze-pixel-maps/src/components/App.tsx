@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { PixelContributionMap, load_from_url } from "../pixel_contrib";
 import { PixelContribViews } from "./PixelContribViews";
 import { InterpolateAngleGraph } from "./InterpolateAngleGraph";
+import { PixelContribErrorViews } from "./PixelContribErrorViews";
+import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
 
 /**
  * @returns {string | null} - The pixel contribution URL from the query string, or null if it is
@@ -34,6 +36,14 @@ function App(): JSX.Element {
     setContribPos([pos_x, pos_y]);
   };
 
+  if (pixelContrib.length <= 2) {
+    return <div></div>;
+  }
+
+  const handleSelectError = (error: number) => {
+    alert(`Selected error: ${error}`);
+  };
+
   return (
     <main>
       <PixelContribViews pixelContribMaps={pixelContrib} onSelectPixelContribSample={handleSelectPixelContribSample} />
@@ -47,6 +57,9 @@ function App(): JSX.Element {
       }}>
         <InterpolateAngleGraph contrib_maps={pixelContrib} pos={contribPos} />
       </div>
+      <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
+      <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
+      <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
     </main>
   )
 }

@@ -4,10 +4,13 @@ import { PixelContribView } from "./PixelContribView";
 export interface PixelContribViewsProps {
     pixelContribMaps: PixelContributionMap[];
     onSelectPixelContribSample?: (pos_x: number, pos_y: number, angle: number) => void;
+    scale?: number;
 }
 
 export function PixelContribViews(props: PixelContribViewsProps): JSX.Element {
     const { pixelContribMaps, onSelectPixelContribSample } = props;
+
+    const scale = props.scale || 1.0;
 
     const handleSelectPixelContribSample = (pos_x: number, pos_y: number, angle: number) => {
         if (onSelectPixelContribSample) {
@@ -34,7 +37,7 @@ export function PixelContribViews(props: PixelContribViewsProps): JSX.Element {
                             margin: "1em",
                         }}>
                             <h2>Camera Angle: {angle}</h2>
-                            <PixelContribView pixelContrib={contrib} onSelectPixelContribSample={handleSelectPixelContribSample} />
+                            <PixelContribView scale={scale} pixelContrib={contrib} onSelectPixelContribSample={handleSelectPixelContribSample} />
                         </div>
                     );
                 })
