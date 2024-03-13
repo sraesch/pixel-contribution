@@ -4,6 +4,7 @@
         "AABB",
         "bincode",
         "byteorder",
+        "chartjs",
         "Colormap",
         "dequantified",
         "dequantization",

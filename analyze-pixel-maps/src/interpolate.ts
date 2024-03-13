@@ -1,7 +1,14 @@
 import { mat2, vec2 } from "gl-matrix";
 import { PixelContributionMap } from "./pixel_contrib";
 
+/**
+ * An interpolator for pixel contributions. For a given angle and position on the pixel contribution
+ * map, the interpolator returns the interpolated value from the pixel contribution maps.
+ */
 export interface PixelContribInterpolator {
+    /**
+     * The name of the interpolator.
+     */
     readonly name: string;
 
     /**
@@ -52,7 +59,7 @@ export class LinearPixelContribInterpolator implements PixelContribInterpolator 
 /**
  * A angle interpolator for pixel contributions that interpolates between the first and
  * last pixel contribution map using the angle.
- * In contrast to the linear interpolator, this interpolator uses the tangens of the angle
+ * In contrast to the linear interpolator, this interpolator uses the tangent of the angle
  * to interpolate the pixel contributions.
  */
 export class AnglePixelContribInterpolator implements PixelContribInterpolator {
@@ -109,7 +116,7 @@ export class QuadraticPixelContribInterpolator implements PixelContribInterpolat
     public readonly name = "Quadratic";
 
     public constructor(contrib_maps: PixelContributionMap[]) {
-        if (contrib_maps.length <= 3) {
+        if (contrib_maps.length <= 2) {
             throw new Error("Not enough contribution maps given");
         }
 
@@ -141,9 +148,9 @@ export class QuadraticPixelContribInterpolator implements PixelContribInterpolat
         // determine the polynomial coefficients a,b,c
         const c = y0; // as x0 = 0
         const rhs = vec2.fromValues(y1 - c, y2 - c);
-        const coeffs = vec2.transformMat2(vec2.create(), rhs, this.A);
-        const a = coeffs[0];
-        const b = coeffs[1];
+        const coefficients = vec2.transformMat2(vec2.create(), rhs, this.A);
+        const a = coefficients[0];
+        const b = coefficients[1];
 
         // evaluate the quadratic polynomial
         return a * angle * angle + b * angle + c;

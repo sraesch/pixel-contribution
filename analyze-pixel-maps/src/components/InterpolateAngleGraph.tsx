@@ -10,10 +10,9 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js';
-import { mat2, vec2 } from "gl-matrix";
 import { useEffect, useState } from "react";
 import { Line } from 'react-chartjs-2';
-import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
+import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, PixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
 
 ChartJS.register(
     CategoryScale,
@@ -44,9 +43,9 @@ export interface InterpolateAngleGraphProps {
 }
 
 /**
- * A single data serie for the graph.
+ * A single data series for the graph.
  */
-interface DataSerie {
+interface DataSeries {
     label: string;
     data: number[];
     borderColor: string;
@@ -56,9 +55,9 @@ interface DataSerie {
 /**
  * A data series for the graph.
  */
-interface DataSeries {
+interface DataSeriesList {
     labels: string[];
-    datasets: DataSerie[];
+    datasets: DataSeries[];
 }
 
 /**
@@ -85,75 +84,37 @@ function extractValues(contrib_maps: PixelContributionMap[], pos: [number, numbe
 }
 
 /**
- * Takes the first and last contribution map and interpolates the angle between them
- * using linear interpolation.
+ * Creates a new data series using the given interpolation operator.
  * 
- * @param contrib_maps - The pixel contribution maps from which to extract the angle. 
- * @param pos - The position on the pixel contribution map.
+ * @param color - The color of the data series.
+ * @param i - The interpolation operator.
+ * @param contrib_maps - The pixel contribution maps from which to interpolate.
+ * @param pos - The position on the pixel contribution map to execute the interpolation on.
  *
- * @returns the interpolated values from the pixel contribution maps at the given position.
+ * @returns a new data series using the given interpolation operator.
  */
-function computeLinearInterpolation(contrib_maps: PixelContributionMap[], pos: [number, number]): number[] {
-    if (contrib_maps.length === 0) {
-        return [];
+function createInterpolationDataSeries<I extends PixelContribInterpolator>(color: [number, number, number], i: I, contrib_maps: PixelContributionMap[], pos: [number, number]): DataSeries {
+    let values: number[] = [];
+
+    if (contrib_maps.length >= 3) {
+        values = contrib_maps.map(contrib => {
+            const angle = contrib.descriptor.camera_angle;
+            return i.interpolate(angle, pos);
+        });
     }
 
-    const i = new LinearPixelContribInterpolator(contrib_maps);
-
-    return contrib_maps.map(contrib => {
-        const angle = contrib.descriptor.camera_angle;
-        return i.interpolate(angle, pos);
-    });
-}
-
-/**
- * Takes the first and last contribution map and interpolates the angle between them
- * using angle interpolation.
- * 
- * @param contrib_maps - The pixel contribution maps from which to extract the angle. 
- * @param pos - The position on the pixel contribution map.
- *
- * @returns the interpolated values from the pixel contribution maps at the given position.
- */
-function computeAngleInterpolation(contrib_maps: PixelContributionMap[], pos: [number, number]): number[] {
-    if (contrib_maps.length === 0) {
-        return [];
-    }
-
-    const i = new AnglePixelContribInterpolator(contrib_maps);
-
-    return contrib_maps.map(contrib => {
-        const angle = contrib.descriptor.camera_angle;
-        return i.interpolate(angle, pos);
-    });
-}
-
-/**
- * Takes the first, middle and last contribution map and interpolates the angle between them
- * using a quadratic interpolation.
- * 
- * @param contrib_maps - The pixel contribution maps from which to extract the angle. 
- * @param pos - The position on the pixel contribution map.
- *
- * @returns the interpolated values from the pixel contribution maps at the given position.
- */
-function computeQuadraticInterpolation(contrib_maps: PixelContributionMap[], pos: [number, number]): number[] {
-    if (contrib_maps.length <= 2) {
-        return [];
-    }
-
-    const i = new QuadraticPixelContribInterpolator(contrib_maps);
-
-    return contrib_maps.map(contrib => {
-        const angle = contrib.descriptor.camera_angle;
-        return i.interpolate(angle, pos);
-    });
+    return {
+        label: `Pixel Contribution (${i.name} Interpolation)`,
+        data: values,
+        borderColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+        backgroundColor: `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.5)`,
+    };
 }
 
 export function InterpolateAngleGraph(props: InterpolateAngleGraphProps): JSX.Element {
     const { contrib_maps, pos } = props;
 
-    const [dataSeries, setDataSeries] = useState<DataSeries>(
+    const [dataSeries, setDataSeries] = useState<DataSeriesList>(
         {
             labels: createLabels(contrib_maps),
             datasets: [],
@@ -163,11 +124,15 @@ export function InterpolateAngleGraph(props: InterpolateAngleGraphProps): JSX.El
     useEffect(() => {
         const labels = createLabels(contrib_maps);
 
+        if (contrib_maps.length <= 2) {
+            return;
+        }
+
         const pixel_pos: [number, number] = pos === null ? [0, 0] : pos;
         const values: number[] = extractValues(contrib_maps, pixel_pos);
-        const linear_interpolation: number[] = computeLinearInterpolation(contrib_maps, pixel_pos);
-        const angle_interpolation: number[] = computeAngleInterpolation(contrib_maps, pixel_pos);
-        const quadratic_interpolation: number[] = computeQuadraticInterpolation(contrib_maps, pixel_pos);
+        const linear_interpolation = createInterpolationDataSeries([99, 255, 132], new LinearPixelContribInterpolator(contrib_maps), contrib_maps, pixel_pos);
+        const angle_interpolation = createInterpolationDataSeries([99, 132, 255], new AnglePixelContribInterpolator(contrib_maps), contrib_maps, pixel_pos);
+        const quadratic_interpolation = createInterpolationDataSeries([128, 128, 128], new QuadraticPixelContribInterpolator(contrib_maps), contrib_maps, pixel_pos);
 
         setDataSeries({
             labels,
@@ -178,24 +143,9 @@ export function InterpolateAngleGraph(props: InterpolateAngleGraphProps): JSX.El
                     borderColor: 'rgb(255, 99, 132)',
                     backgroundColor: 'rgba(255, 99, 132, 0.5)',
                 },
-                {
-                    label: 'Pixel Contribution (Linear Interpolation)',
-                    data: linear_interpolation,
-                    borderColor: 'rgb(99, 255, 132)',
-                    backgroundColor: 'rgba(99, 255, 132, 0.5)',
-                },
-                {
-                    label: 'Pixel Contribution (Angle Interpolation)',
-                    data: angle_interpolation,
-                    borderColor: 'rgb(99, 132, 255)',
-                    backgroundColor: 'rgba(99, 132, 255, 0.5)',
-                },
-                {
-                    label: 'Pixel Contribution (Quadratic Interpolation)',
-                    data: quadratic_interpolation,
-                    borderColor: 'rgb(128, 128, 128)',
-                    backgroundColor: 'rgba(128, 128, 128, 0.5)',
-                }
+                linear_interpolation,
+                angle_interpolation,
+                quadratic_interpolation
             ],
         });
 
