@@ -54,6 +54,10 @@ function App(): JSX.Element {
         <PixelContribViews pixelContribMaps={pixelContrib} onSelectPixelContribSample={handleSelectPixelContribSample} />
       </div>
       <h2 style={{ marginTop: '2em' }}>Contribution values for fixed position</h2>
+      <p style={{ color: 'gray' }}>
+        Click on a pixel in the contribution maps above to see the contribution values for that position
+        in the different contribution maps.
+      </p>
       <div style={{
         width: "90%",
         height: "90%",
@@ -72,7 +76,7 @@ function App(): JSX.Element {
       </div>
 
       <h2 style={{ marginTop: '2em' }}>Spherical view on the contribution</h2>
-      <SphereView contrib_maps={pixelContrib} />
+      <SphereView contrib_maps={pixelContrib} canvas_size={512} />
     </main>
   )
 }
