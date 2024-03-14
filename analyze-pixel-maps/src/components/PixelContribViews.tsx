@@ -39,7 +39,7 @@ export function PixelContribViews(props: PixelContribViewsProps): JSX.Element {
                         <div key={i} style={{
                             margin: "1em",
                         }}>
-                            <h2>Camera Angle: {angle}</h2>
+                            <h3>Camera Angle: {angle}</h3>
                             <PixelContribView scale={scale} pixelContrib={contrib} onSelectPixelContribSample={handleSelectPixelContribSample} />
                         </div>
                     );

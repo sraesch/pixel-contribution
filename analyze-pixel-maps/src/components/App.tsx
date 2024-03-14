@@ -48,7 +48,12 @@ function App(): JSX.Element {
 
   return (
     <main>
-      <PixelContribViews pixelContribMaps={pixelContrib} onSelectPixelContribSample={handleSelectPixelContribSample} />
+      <h1>Pixel Contribution Analysis Page</h1>
+      <div>
+        <h2>Pixel Contribution Maps</h2>
+        <PixelContribViews pixelContribMaps={pixelContrib} onSelectPixelContribSample={handleSelectPixelContribSample} />
+      </div>
+      <h2 style={{ marginTop: '2em' }}>Contribution values for fixed position</h2>
       <div style={{
         width: "90%",
         height: "90%",
@@ -60,11 +65,13 @@ function App(): JSX.Element {
         <InterpolateAngleGraph contrib_maps={pixelContrib} pos={contribPos} />
       </div>
       <div>
+        <h2>Interpolated Contribution Error</h2>
         <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
         <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
         <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
       </div>
 
+      <h2 style={{ marginTop: '2em' }}>Spherical view on the contribution</h2>
       <SphereView contrib_maps={pixelContrib} />
     </main>
   )

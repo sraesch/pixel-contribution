@@ -82,7 +82,7 @@ export function SphereView(props: SphereViewProps): JSX.Element {
         display: "flex",
         flexDirection: "column",
     }}>
-        <select onChange={handleChangeIndex}>
+        <select onChange={handleChangeIndex} style={{ maxWidth: '256px' }}>
             {[...Array(contrib_maps.size()).keys()].map(i => {
                 const d = contrib_maps.get_map_descriptor(i);
 

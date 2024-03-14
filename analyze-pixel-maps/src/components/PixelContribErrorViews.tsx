@@ -45,7 +45,7 @@ export function PixelContribErrorViews(props: PixelContribErrorViewsProps): JSX.
 
     return (
         <div>
-            <h1>Pixel Contribution Error Views {interpolator.name}</h1>
+            <h3>Pixel Contribution Error Views {interpolator.name}</h3>
             <PixelContribViews onSelectPixelContribSample={handleSelectError} scale={scale} pixelContribMaps={errorMaps} />
         </div>
     );
