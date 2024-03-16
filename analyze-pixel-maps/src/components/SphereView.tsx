@@ -21,7 +21,7 @@ export function SphereView(props: SphereViewProps): JSX.Element {
     const canvasRef = useRef<null | HTMLCanvasElement>(null);
     const [angleX, setAngleX] = useState<number>(0);
     const [angleY, setAngleY] = useState<number>(0);
-
+    const [scale, setScale] = useState<number>(1.0);
 
     const { contrib_maps, canvas_size } = props;
 
@@ -73,7 +73,7 @@ export function SphereView(props: SphereViewProps): JSX.Element {
                     const index = contrib_map.get_description().index_from_camera_dir(dir[0], dir[1], dir[2]);
                     const value = contrib_map.get_value_at_index(index);
 
-                    color = colorMap[Math.floor(value * 255)];
+                    color = colorMap[clamp(Math.floor(value * scale * 255), 0, 255)];
                 }
 
                 // determine the index into the image data array
@@ -90,7 +90,7 @@ export function SphereView(props: SphereViewProps): JSX.Element {
 
         ctx.putImageData(image_data, 0, 0);
 
-    }, [contrib_maps, canvas_size, contribMapIndex, angleX, angleY]);
+    }, [contrib_maps, canvas_size, contribMapIndex, angleX, angleY, scale]);
 
     if (contrib_maps.size() === 0) {
         return <div></div>;
@@ -104,6 +104,11 @@ export function SphereView(props: SphereViewProps): JSX.Element {
     const handleOnChangeAngleX = (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value;
         setAngleX(parseInt(value));
+    }
+
+    const handleScale = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const value = event.target.value;
+        setScale(parseFloat(value));
     }
 
     return (<div style={{
@@ -130,6 +135,10 @@ export function SphereView(props: SphereViewProps): JSX.Element {
         <span style={{ marginTop: '8px' }}>
             Angle (Degree) Y:
             <input type="number" value={angleY} id="angleY" name="angleY" min="0" max="360" style={{ maxWidth: '48px', marginLeft: '1rem' }} onChange={handleOnChangeAngleY} />
+        </span>
+        <span style={{ marginTop: '8px' }}>
+            Scale Colormap:
+            <input type="number" value={scale} id="scale" name="scale" min="0.1" max="4" step={0.1} style={{ maxWidth: '48px', marginLeft: '1rem' }} onChange={handleScale} />
         </span>
         <canvas ref={canvasRef} style={{
             width: canvas_size,
