@@ -70,9 +70,9 @@ function App(): JSX.Element {
       </div>
       <div>
         <h2>Interpolated Contribution Error</h2>
-        <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
-        <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
-        <PixelContribErrorViews onSelectError={handleSelectError} scale={10.0} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
+        <PixelContribErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
+        <PixelContribErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
+        <PixelContribErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
       </div>
 
       <h2 style={{ marginTop: '2em' }}>Spherical view on the contribution</h2>

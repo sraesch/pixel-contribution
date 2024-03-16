@@ -7,14 +7,11 @@ import { PixelContributionMaps } from "rs-analyze-pixel-maps";
 export interface PixelContribErrorViewsProps {
     contrib_maps: PixelContributionMaps;
     interpolator: PixelContribInterpolator;
-    scale?: number;
     onSelectError?: (error: number) => void;
 }
 
 export function PixelContribErrorViews(props: PixelContribErrorViewsProps): JSX.Element {
     const { contrib_maps, interpolator } = props;
-
-    const scale = props.scale || 1.0;
 
     const [errorMaps, setErrorMaps] = useState<PixelContributionMaps>(new PixelContributionMaps());
 
@@ -46,7 +43,7 @@ export function PixelContribErrorViews(props: PixelContribErrorViewsProps): JSX.
     return (
         <div>
             <h3>Pixel Contribution Error Views {interpolator.name}</h3>
-            <PixelContribViews onSelectPixelContribSample={handleSelectError} scale={scale} pixelContribMaps={errorMaps} />
+            <PixelContribViews onSelectPixelContribSample={handleSelectError} pixelContribMaps={errorMaps} />
         </div>
     );
 }
