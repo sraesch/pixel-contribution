@@ -5,6 +5,7 @@ import { PixelContribErrorViews } from "./PixelContribErrorViews";
 import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
 import { PixelContributionMaps } from 'rs-analyze-pixel-maps';
 import { SphereView } from "./SphereView";
+import { EquatorGraph } from "./EquatorGraph";
 
 /**
  * @returns {string | null} - The pixel contribution URL from the query string, or null if it is
@@ -77,6 +78,7 @@ function App(): JSX.Element {
 
       <h2 style={{ marginTop: '2em' }}>Spherical view on the contribution</h2>
       <SphereView contrib_maps={pixelContrib} canvas_size={512} />
+      <EquatorGraph contrib_maps={pixelContrib} />
     </main>
   )
 }
