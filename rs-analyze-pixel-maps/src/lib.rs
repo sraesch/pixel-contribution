@@ -1,6 +1,8 @@
 extern crate cfg_if;
 extern crate wasm_bindgen;
 
+pub use math;
+
 mod utils;
 
 use wasm_bindgen::prelude::*;

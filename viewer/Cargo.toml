@@ -9,6 +9,7 @@ edition = "2021"
 rasterizer = { path = "../rasterizer" }
 render-lib = { path = "../render-lib" }
 pixel-contrib = { path = "../pixel-contrib" }
+pixel-contrib-types = { path = "../pixel-contrib-types" }
 math = { path = "../math" }
 cad_import = "0.3.1"
 log = "0.4"

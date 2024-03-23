@@ -7,9 +7,9 @@ use clap::Parser;
 use log::{error, info, LevelFilter};
 use options::{Options, PixelContribColorMap};
 use pixel_contrib::{
-    compute_contribution_map, CameraConfig, GrayScaleColorMap, PixelContributionMaps,
-    PixelContributionOptions, TurboColorMap,
+    compute_contribution_map, CameraConfig, GrayScaleColorMap, PixelContributionMapFile, PixelContributionMapImageExport, PixelContributionOptions, TurboColorMap
 };
+use pixel_contrib_types::PixelContributionMaps;
 use rasterizer::{simple_rasterizer::SimpleRasterizer, Scene, Stats, StatsNodeTrait};
 
 /// Parses the program arguments and returns None, if no arguments were provided and Some otherwise.

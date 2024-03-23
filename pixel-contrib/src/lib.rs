@@ -8,6 +8,7 @@ pub mod screen_space;
 mod view;
 
 pub use error::*;
+use pixel_contrib_types::{PixelContribColorMapDescriptor, PixelContributionMap};
 pub use pixel_contribution::*;
 pub use pixel_contribution_map::*;
 use thread_local::ThreadLocal;

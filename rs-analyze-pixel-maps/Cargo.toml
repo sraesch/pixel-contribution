@@ -7,6 +7,8 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+math = { path = "../math" }
+pixel-contrib = { path = "../pixel-contrib" }
 cfg-if = "1.0.0"
 wasm-bindgen = "0.2"
 

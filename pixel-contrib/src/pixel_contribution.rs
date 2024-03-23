@@ -5,10 +5,11 @@ use std::{
 
 use math::BoundingSphere;
 use nalgebra_glm::{Mat4, Vec3};
+use pixel_contrib_types::PixelContributionMaps;
 
 use crate::{
     screen_space::{ScreenSpaceEstimator, ScreenSpaceResult},
-    Error, PixelContributionMaps, Result,
+    Error, Result,
 };
 
 /// The pixel contribution estimator is used to estimate the contribution of a pixel to the final
