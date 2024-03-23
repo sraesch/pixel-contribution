@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npm run build && vite",
     "build": "tsc && vite build",
-    "wasm": "wasm-pack build ./rs-pixel-maps --target web",
+    "wasm": "wasm-pack build ./rs-pixel-maps --target bundler",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -16,7 +16,8 @@
     "gl-matrix": "^3.4.3",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "rs-pixel-maps": "file:./rs-pixel-maps/pkg"
   },
   "devDependencies": {
     "@types/colormap": "^2.3.4",
@@ -30,6 +31,7 @@
     "eslint-plugin-react-refresh": "^0.4.5",
     "typescript": "^5.2.2",
     "vite": "^5.2.4",
-    "vite-plugin-wasm-pack": "^0.1.12"
+    "vite-plugin-top-level-await": "^1.4.1",
+    "vite-plugin-wasm": "^3.3.0"
   }
 }
