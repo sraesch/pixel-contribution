@@ -8,6 +8,7 @@ members = [
     "pixel-contrib-cli",
     "render-lib",
     "viewer",
+    "analyze-pixel-maps/rs-pixel-maps",
 ]
 
 [profile.release-with-debug]
