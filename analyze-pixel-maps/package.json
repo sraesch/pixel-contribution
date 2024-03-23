@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npm run build && vite",
     "build": "tsc && vite build",
-    "wasm": "wasm-pack build ./rs-pixel-maps --target bundler",
+    "wasm": "wasm-pack build ../rs-analyze-pixel-maps --target bundler",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -17,7 +17,7 @@
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
-    "rs-pixel-maps": "file:./rs-pixel-maps/pkg"
+    "rs-analyze-pixel-maps": "file:../rs-analyze-pixel-maps/pkg"
   },
   "devDependencies": {
     "@types/colormap": "^2.3.4",
