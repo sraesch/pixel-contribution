@@ -16,8 +16,8 @@ function getPixelContribURL(): string | null {
 }
 
 function App(): JSX.Element {
-  const [pixelContrib, setPixelContrib] = useState<PixelContributionMaps>(new PixelContributionMaps());
-  const [contribPos, setContribPos] = useState<null | [number, number]>(null);
+  const [pixelContrib, setPixelContrib] = useState<PixelContributionMaps | null>(null);
+  const [contribPos, setContribPos] = useState<[number, number]>([0, 0]);
 
   // load pixel contribution data from a URL
   useEffect(() => {
@@ -37,7 +37,7 @@ function App(): JSX.Element {
     setContribPos([pos_x, pos_y]);
   };
 
-  if (pixelContrib.size() <= 2) {
+  if (pixelContrib === null || pixelContrib.size() <= 2) {
     return <div></div>;
   }
 
