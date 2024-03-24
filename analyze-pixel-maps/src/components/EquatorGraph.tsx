@@ -1,4 +1,4 @@
-import { clamp } from "../pixel_contrib";
+import { clamp } from "../utils";
 
 import {
     Chart as ChartJS,

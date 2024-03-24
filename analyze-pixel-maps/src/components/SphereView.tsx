@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { clamp } from "../pixel_contrib";
+import { clamp } from "../utils";
 import { quat, vec3 } from "gl-matrix";
 import createColormap from "colormap";
 import { PixelContributionMaps } from 'rs-analyze-pixel-maps';
