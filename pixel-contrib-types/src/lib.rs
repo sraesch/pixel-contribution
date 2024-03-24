@@ -91,7 +91,7 @@ impl PixelContribColorMapDescriptor {
 /// The pixel contribution maps for different configurations
 #[derive(Clone, PartialEq)]
 pub struct PixelContributionMaps {
-    maps: Vec<PixelContributionMap>,
+    pub maps: Vec<PixelContributionMap>,
 }
 
 impl Default for PixelContributionMaps {

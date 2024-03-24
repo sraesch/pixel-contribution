@@ -8,9 +8,11 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 math = { path = "../math" }
-pixel-contrib = { path = "../pixel-contrib" }
+pixel-contrib-types = { path = "../pixel-contrib-types" }
+colorgrad = "0.6"
 cfg-if = "1.0.0"
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -27,3 +29,15 @@ opt-level = "s"
 
 [features]
 default = ["console_error_panic_hook"]
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    'Headers',
+    'Request',
+    'RequestInit',
+    'RequestMode',
+    'Response',
+    'Window',
+    'ImageData',
+]

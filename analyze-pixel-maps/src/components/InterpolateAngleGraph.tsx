@@ -1,5 +1,3 @@
-import { PixelContributionMap } from "../pixel_contrib";
-
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -13,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { Line } from 'react-chartjs-2';
 import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, PixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
+import { PixelContributionMaps } from "rs-analyze-pixel-maps";
 
 ChartJS.register(
     CategoryScale,
@@ -38,7 +37,7 @@ const options = {
 };
 
 export interface InterpolateAngleGraphProps {
-    contrib_maps: PixelContributionMap[];
+    contrib_maps: PixelContributionMaps;
     pos: [number, number] | null;
 }
 
@@ -47,7 +46,7 @@ export interface InterpolateAngleGraphProps {
  */
 interface DataSeries {
     label: string;
-    data: number[];
+    data: Float32Array;
     borderColor: string;
     backgroundColor: string;
 }
@@ -65,10 +64,16 @@ interface DataSeriesList {
  *
  * @returns the labels for the graph.
  */
-function createLabels(contrib_maps: PixelContributionMap[]): string[] {
-    return contrib_maps.map(contrib => {
-        return `Angle: ${(contrib.descriptor.camera_angle * 180 / Math.PI).toPrecision(3)}`;
-    });
+function createLabels(contrib_maps: PixelContributionMaps): string[] {
+    const num_maps = contrib_maps.size();
+
+    const labels: string[] = [];
+    for (let i = 0; i < num_maps; i++) {
+        const descriptor = contrib_maps.get_map_descriptor(i);
+        labels.push(`Angle: ${(descriptor.camera_angle * 180 / Math.PI).toPrecision(3)}`);
+    }
+
+    return labels;
 }
 
 /**
@@ -77,10 +82,9 @@ function createLabels(contrib_maps: PixelContributionMap[]): string[] {
  *
  * @returns the extracted values from the pixel contribution maps at the given position.
  */
-function extractValues(contrib_maps: PixelContributionMap[], pos: [number, number]): number[] {
-    return contrib_maps.map(contrib => {
-        return contrib.pixel_contrib[pos[1] * contrib.descriptor.map_size + pos[0]];
-    });
+function extractValues(contrib_maps: PixelContributionMaps, pos: [number, number]): Float32Array {
+    const values = contrib_maps.get_values_at_pos(pos[0], pos[1]);
+    return values;
 }
 
 /**
@@ -93,14 +97,20 @@ function extractValues(contrib_maps: PixelContributionMap[], pos: [number, numbe
  *
  * @returns a new data series using the given interpolation operator.
  */
-function createInterpolationDataSeries<I extends PixelContribInterpolator>(color: [number, number, number], i: I, contrib_maps: PixelContributionMap[], pos: [number, number]): DataSeries {
-    let values: number[] = [];
+function createInterpolationDataSeries<I extends PixelContribInterpolator>(color: [number, number, number], i: I, contrib_maps: PixelContributionMaps, pos: [number, number]): DataSeries {
+    let values: Float32Array | null = null;
 
-    if (contrib_maps.length >= 3) {
-        values = contrib_maps.map(contrib => {
-            const angle = contrib.descriptor.camera_angle;
-            return i.interpolate(angle, pos);
-        });
+    if (contrib_maps.size() >= 3) {
+        values = new Float32Array(contrib_maps.size());
+
+        for (let j = 0; j < contrib_maps.size(); j++) {
+            const angle = contrib_maps.get_map_descriptor(j).camera_angle;
+            values[j] = i.interpolate(angle, pos);
+        }
+    }
+
+    if (values === null) {
+        values = new Float32Array();
     }
 
     return {
@@ -124,12 +134,12 @@ export function InterpolateAngleGraph(props: InterpolateAngleGraphProps): JSX.El
     useEffect(() => {
         const labels = createLabels(contrib_maps);
 
-        if (contrib_maps.length <= 2) {
+        if (contrib_maps.size() <= 2) {
             return;
         }
 
         const pixel_pos: [number, number] = pos === null ? [0, 0] : pos;
-        const values: number[] = extractValues(contrib_maps, pixel_pos);
+        const values: Float32Array = extractValues(contrib_maps, pixel_pos);
         const linear_interpolation = createInterpolationDataSeries([99, 255, 132], new LinearPixelContribInterpolator(contrib_maps), contrib_maps, pixel_pos);
         const angle_interpolation = createInterpolationDataSeries([99, 132, 255], new AnglePixelContribInterpolator(contrib_maps), contrib_maps, pixel_pos);
         const quadratic_interpolation = createInterpolationDataSeries([128, 128, 128], new QuadraticPixelContribInterpolator(contrib_maps), contrib_maps, pixel_pos);

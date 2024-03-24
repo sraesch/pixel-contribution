@@ -1,5 +1,5 @@
 import { mat2, vec2 } from "gl-matrix";
-import { PixelContributionMap } from "./pixel_contrib";
+import { PixelContributionMap, PixelContributionMaps } from "rs-analyze-pixel-maps";
 
 /**
  * An interpolator for pixel contributions. For a given angle and position on the pixel contribution
@@ -34,22 +34,24 @@ export class LinearPixelContribInterpolator implements PixelContribInterpolator 
     /**
      * @param contrib_maps - The pixel contribution maps from which to define the interpolation.
      */
-    constructor(contrib_maps: PixelContributionMap[]) {
-        this.first_map = contrib_maps[0];
-        this.last_map = contrib_maps[contrib_maps.length - 1];
+    constructor(contrib_maps: PixelContributionMaps) {
+        const n = contrib_maps.size();
+
+        this.first_map = contrib_maps.get_map(0);
+        this.last_map = contrib_maps.get_map(n - 1);
     }
 
     public interpolate(angle: number, pos: [number, number]): number {
         const first_map = this.first_map;
         const last_map = this.last_map;
 
-        const first_angle = first_map.descriptor.camera_angle;
-        const last_angle = last_map.descriptor.camera_angle;
+        const first_angle = first_map.get_description().camera_angle;
+        const last_angle = last_map.get_description().camera_angle;
 
-        const index = pos[1] * first_map.descriptor.map_size + pos[0];
+        const index = pos[1] * first_map.get_description().map_size + pos[0];
 
-        const first_value = first_map.pixel_contrib[index];
-        const last_value = last_map.pixel_contrib[index];
+        const first_value = first_map.get_value_at_index(index);
+        const last_value = last_map.get_value_at_index(index);
 
         const f = (angle - first_angle) / (last_angle - first_angle);
         return first_value * (1 - f) + last_value * f;
@@ -72,22 +74,24 @@ export class AnglePixelContribInterpolator implements PixelContribInterpolator {
     /**
      * @param contrib_maps - The pixel contribution maps from which to define the interpolation.
      */
-    constructor(contrib_maps: PixelContributionMap[]) {
-        this.first_map = contrib_maps[0];
-        this.last_map = contrib_maps[contrib_maps.length - 1];
+    constructor(contrib_maps: PixelContributionMaps) {
+        const n = contrib_maps.size();
+
+        this.first_map = contrib_maps.get_map(0);
+        this.last_map = contrib_maps.get_map(n - 1);
     }
 
     public interpolate(angle: number, pos: [number, number]): number {
         const first_map = this.first_map;
         const last_map = this.last_map;
 
-        const first_angle = first_map.descriptor.camera_angle;
-        const last_angle = last_map.descriptor.camera_angle;
+        const first_angle = first_map.get_description().camera_angle;
+        const last_angle = last_map.get_description().camera_angle;
 
-        const index = pos[1] * first_map.descriptor.map_size + pos[0];
+        const index = pos[1] * first_map.get_description().map_size + pos[0];
 
-        const first_value = first_map.pixel_contrib[index];
-        const last_value = last_map.pixel_contrib[index];
+        const first_value = first_map.get_value_at_index(index);
+        const last_value = last_map.get_value_at_index(index);
 
         const a_start = Math.tan(first_angle / 2.0);
         const a_last = Math.tan(last_angle / 2.0);
@@ -115,18 +119,20 @@ export class QuadraticPixelContribInterpolator implements PixelContribInterpolat
 
     public readonly name = "Quadratic";
 
-    public constructor(contrib_maps: PixelContributionMap[]) {
-        if (contrib_maps.length <= 2) {
+    public constructor(contrib_maps: PixelContributionMaps) {
+        const n = contrib_maps.size();
+
+        if (n <= 2) {
             throw new Error("Not enough contribution maps given");
         }
 
-        this.first_map = contrib_maps[0];
-        this.last_map = contrib_maps[contrib_maps.length - 1];
-        this.middle_map = contrib_maps[Math.floor(contrib_maps.length / 2)];
+        this.first_map = contrib_maps.get_map(0);
+        this.last_map = contrib_maps.get_map(n - 1);
+        this.middle_map = contrib_maps.get_map(Math.floor(n / 2));
 
-        const x0 = this.first_map.descriptor.camera_angle;
-        const x1 = this.middle_map.descriptor.camera_angle;
-        const x2 = this.last_map.descriptor.camera_angle;
+        const x0 = this.first_map.get_description().camera_angle;
+        const x1 = this.middle_map.get_description().camera_angle;
+        const x2 = this.last_map.get_description().camera_angle;
 
         console.assert(x0 === 0, "The first angle must be 0");
         console.assert(x0 < x1 && x1 < x2, "The angles are not in ascending order");
@@ -139,11 +145,11 @@ export class QuadraticPixelContribInterpolator implements PixelContribInterpolat
         const middle_map = this.middle_map;
         const last_map = this.last_map;
 
-        const index = pos[1] * first_map.descriptor.map_size + pos[0];
+        const index = pos[1] * first_map.get_description().map_size + pos[0];
 
-        const y0 = first_map.pixel_contrib[index];
-        const y1 = middle_map.pixel_contrib[index];
-        const y2 = last_map.pixel_contrib[index];
+        const y0 = first_map.get_value_at_index(index);
+        const y1 = middle_map.get_value_at_index(index);
+        const y2 = last_map.get_value_at_index(index);
 
         // determine the polynomial coefficients a,b,c
         const c = y0; // as x0 = 0

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { PixelContribInterpolator } from "../interpolate";
-import { PixelContributionMap } from "../pixel_contrib";
 import { determine_interpolation_error } from "../interpolation_error";
 import { PixelContribViews } from "./PixelContribViews";
+import { PixelContributionMaps } from "rs-analyze-pixel-maps";
 
 export interface PixelContribErrorViewsProps {
-    contrib_maps: PixelContributionMap[];
+    contrib_maps: PixelContributionMaps;
     interpolator: PixelContribInterpolator;
     scale?: number;
     onSelectError?: (error: number) => void;
@@ -16,7 +16,7 @@ export function PixelContribErrorViews(props: PixelContribErrorViewsProps): JSX.
 
     const scale = props.scale || 1.0;
 
-    const [errorMaps, setErrorMaps] = useState<PixelContributionMap[]>([]);
+    const [errorMaps, setErrorMaps] = useState<PixelContributionMaps>(new PixelContributionMaps());
 
     useEffect(() => {
         setErrorMaps(determine_interpolation_error(interpolator, contrib_maps));
@@ -25,13 +25,19 @@ export function PixelContribErrorViews(props: PixelContribErrorViewsProps): JSX.
 
     const handleSelectError = (pos_x: number, pos_y: number, angle: number) => {
         if (props.onSelectError) {
-            const error_map = errorMaps.find(contrib => contrib.descriptor.camera_angle === angle);
-            if (!error_map) {
+            let error_map_index = -1;
+            for (let i = 0; i < errorMaps.size(); i++) {
+                if (errorMaps.get_map_descriptor(i).camera_angle === angle) {
+                    error_map_index = i;
+                    break;
+                }
+            }
+
+            if (error_map_index < 0) {
                 return;
             }
 
-            const index = pos_y * error_map.descriptor.map_size + pos_x;
-            const error = error_map.pixel_contrib[index];
+            const error = errorMaps.get_value(error_map_index, pos_x, pos_y);
 
             props.onSelectError(error);
         }
