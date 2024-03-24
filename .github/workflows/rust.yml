@@ -98,5 +98,5 @@ jobs:
           command: "install"
           args: "wasm-pack"
 
-      # build the wasm package
-      - run: "wasm-pack build --target bundler"
+      # build the wasm package in the directory rs-analyze-pixel-maps
+      - run: "cd rs-analyze-pixel-maps && wasm-pack build --target bundler"
