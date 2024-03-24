@@ -2,9 +2,9 @@ name: "Rust Actions"
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   check:
@@ -53,7 +53,7 @@ jobs:
           profile: "minimal"
           toolchain: "stable"
           override: true
-          
+
       - run: "rustup component add rustfmt"
 
       - uses: "actions-rs/cargo@v1"
@@ -78,3 +78,25 @@ jobs:
       - uses: "actions-rs/cargo@v1"
         with:
           command: "clippy"
+
+  wasm-pack-build:
+    name: "WASM Pack build"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out the repo"
+        uses: actions/checkout@v3
+
+      - uses: "actions-rs/toolchain@v1"
+        with:
+          profile: "minimal"
+          toolchain: "stable"
+          override: true
+
+      # install wasm-pack with cargo
+      - uses: "actions-rs/cargo@v1"
+        with:
+          command: "install"
+          args: "wasm-pack"
+
+      # build the wasm package
+      - run: "wasm-pack build --target bundler"
