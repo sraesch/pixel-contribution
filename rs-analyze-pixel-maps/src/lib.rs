@@ -5,6 +5,7 @@ use std::{cell::RefCell, rc::Rc};
 
 pub use interpolate::*;
 pub use math;
+pub use utils::*;
 
 mod interpolate;
 mod utils;
