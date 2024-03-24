@@ -1,5 +1,3 @@
-use image::ImageError;
-use pixel_contrib_types::Error as TypeError;
 use quick_error::quick_error;
 use std::io;
 
@@ -21,22 +19,6 @@ quick_error! {
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Self {
         Error::IO(format!("{}", error))
-    }
-}
-
-impl From<ImageError> for Error {
-    fn from(error: ImageError) -> Self {
-        Error::IO(format!("Image Error: {}", error))
-    }
-}
-
-impl From<TypeError> for Error {
-    fn from(error: TypeError) -> Self {
-        match error {
-            TypeError::IO(err) => Error::IO(err),
-            TypeError::Internal(err) => Error::Internal(err),
-            TypeError::InvalidArgument(err) => Error::InvalidArgument(err),
-        }
     }
 }
 

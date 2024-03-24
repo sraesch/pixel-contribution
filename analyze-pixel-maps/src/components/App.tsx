@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { PixelContributionMap, load_from_url } from "../pixel_contrib";
 import { PixelContribViews } from "./PixelContribViews";
 import { InterpolateAngleGraph } from "./InterpolateAngleGraph";
 import { PixelContribErrorViews } from "./PixelContribErrorViews";
 import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
+import { PixelContributionMaps } from 'rs-analyze-pixel-maps';
 
 /**
  * @returns {string | null} - The pixel contribution URL from the query string, or null if it is
@@ -16,16 +16,17 @@ function getPixelContribURL(): string | null {
 }
 
 function App(): JSX.Element {
-  const [pixelContrib, setPixelContrib] = useState<PixelContributionMap[]>([]);
-  const [contribPos, setContribPos] = useState<null | [number, number]>(null);
+  const [pixelContrib, setPixelContrib] = useState<PixelContributionMaps | null>(null);
+  const [contribPos, setContribPos] = useState<[number, number]>([0, 0]);
 
   // load pixel contribution data from a URL
   useEffect(() => {
     const url = getPixelContribURL();
     if (url) {
       console.log(`Loading pixel contributions from ${url}`);
-      load_from_url(url).then(pixel_contrib => {
-        console.log(`Loaded pixel contributions for ${pixel_contrib.length} maps`);
+
+      PixelContributionMaps.from_reader(url).then((pixel_contrib: PixelContributionMaps): void => {
+        console.log(`Loaded pixel contributions for ${pixel_contrib.size()} maps`);
         setPixelContrib(pixel_contrib);
       });
     }
@@ -36,7 +37,7 @@ function App(): JSX.Element {
     setContribPos([pos_x, pos_y]);
   };
 
-  if (pixelContrib.length <= 2) {
+  if (pixelContrib === null || pixelContrib.size() <= 2) {
     return <div></div>;
   }
 

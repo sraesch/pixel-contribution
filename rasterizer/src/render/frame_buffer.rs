@@ -1,6 +1,5 @@
+use math::clamp;
 use nalgebra_glm::Vec3;
-
-use crate::utils::clamp;
 
 use super::{Frame, Histogram};
 

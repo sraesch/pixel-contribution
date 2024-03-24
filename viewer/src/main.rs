@@ -13,7 +13,8 @@ use nalgebra_glm::{Vec3, Vec4};
 use options::Options;
 
 use anyhow::Result;
-use pixel_contrib::{PixelContribution, PixelContributionMaps};
+use pixel_contrib::PixelContribution;
+use pixel_contrib_types::PixelContributionMaps;
 use rasterizer::BoundingSphere;
 use render_lib::{
     camera::Camera, configure_culling, create_and_run_canvas, BlendFactor, CanvasOptions,

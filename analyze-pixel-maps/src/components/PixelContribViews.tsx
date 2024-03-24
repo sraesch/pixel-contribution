@@ -1,8 +1,9 @@
-import { PixelContributionMap } from "../pixel_contrib";
 import { PixelContribView } from "./PixelContribView";
+import { PixelContributionMaps } from "rs-analyze-pixel-maps";
+
 
 export interface PixelContribViewsProps {
-    pixelContribMaps: PixelContributionMap[];
+    pixelContribMaps: PixelContributionMaps;
     onSelectPixelContribSample?: (pos_x: number, pos_y: number, angle: number) => void;
     scale?: number;
 }
@@ -28,9 +29,11 @@ export function PixelContribViews(props: PixelContribViewsProps): JSX.Element {
             height: "100%",
         }}>
             {
-                pixelContribMaps.map((contrib, i) => {
+                [...Array(pixelContribMaps.size()).keys()].map(i => {
+                    const contrib = pixelContribMaps.get_map(i);
+                    const descriptor = contrib.get_description();
                     // convert angle from radians to degrees and round it
-                    const angle = Math.round(contrib.descriptor.camera_angle * 180 / Math.PI);
+                    const angle = Math.round(descriptor.camera_angle * 180 / Math.PI);
 
                     return (
                         <div key={i} style={{

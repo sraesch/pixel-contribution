@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build && vite",
     "build": "tsc && vite build",
+    "wasm": "wasm-pack build ../rs-analyze-pixel-maps --target bundler",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -15,7 +16,8 @@
     "gl-matrix": "^3.4.3",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "rs-analyze-pixel-maps": "file:../rs-analyze-pixel-maps/pkg"
   },
   "devDependencies": {
     "@types/colormap": "^2.3.4",
@@ -28,6 +30,8 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "typescript": "^5.2.2",
-    "vite": "^5.1.6"
+    "vite": "^5.2.4",
+    "vite-plugin-top-level-await": "^1.4.1",
+    "vite-plugin-wasm": "^3.3.0"
   }
 }

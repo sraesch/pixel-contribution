@@ -3,7 +3,7 @@ use std::mem::size_of;
 use anyhow::Result;
 use log::info;
 use nalgebra_glm::Mat4;
-use pixel_contrib::PixelContributionMaps;
+use pixel_contrib_types::PixelContributionMaps;
 use render_lib::{
     Attribute, AttributeBlock, Bind, DataType, DrawCall, Filtering, GPUBuffer, GPUBufferType,
     IndexData, PrimitiveType, Shader, Texture, TextureData, TextureDescriptor, Uniform,
