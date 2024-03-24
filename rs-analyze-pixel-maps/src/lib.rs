@@ -1,6 +1,8 @@
 extern crate cfg_if;
 extern crate wasm_bindgen;
 
+use std::rc::Rc;
+
 pub use math;
 
 mod utils;
@@ -8,7 +10,7 @@ mod utils;
 use math::clamp;
 use wasm_bindgen::{prelude::*, Clamped};
 use wasm_bindgen_futures::{
-    js_sys::{Array, ArrayBuffer, Float32Array, Uint8Array},
+    js_sys::{ArrayBuffer, Float32Array, Uint8Array},
     JsFuture,
 };
 use web_sys::{ImageData, Request, RequestInit, RequestMode, Response};
@@ -16,7 +18,7 @@ use web_sys::{ImageData, Request, RequestInit, RequestMode, Response};
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct PixelContributionMap {
-    inner: pixel_contrib_types::PixelContributionMap,
+    inner: Rc<pixel_contrib_types::PixelContributionMap>,
 }
 
 #[wasm_bindgen]
@@ -36,10 +38,10 @@ impl PixelContributionMap {
         let values = values.to_vec();
 
         Self {
-            inner: pixel_contrib_types::PixelContributionMap {
+            inner: Rc::new(pixel_contrib_types::PixelContributionMap {
                 descriptor,
                 pixel_contrib: values,
-            },
+            }),
         }
     }
 
@@ -139,7 +141,9 @@ impl PixelContributionMaps {
         let inner: Vec<PixelContributionMap> = maps
             .maps
             .into_iter()
-            .map(|map| PixelContributionMap { inner: map })
+            .map(|map| PixelContributionMap {
+                inner: Rc::new(map),
+            })
             .collect();
 
         Ok(PixelContributionMaps { inner })
