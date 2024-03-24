@@ -1,10 +1,12 @@
 extern crate cfg_if;
 extern crate wasm_bindgen;
 
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
+pub use interpolate::*;
 pub use math;
 
+mod interpolate;
 mod utils;
 
 use math::clamp;
@@ -91,9 +93,9 @@ impl PixelContributionMap {
 }
 
 #[wasm_bindgen]
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PixelContributionMaps {
-    inner: Vec<PixelContributionMap>,
+    inner: RefCell<Vec<PixelContributionMap>>,
 }
 
 #[wasm_bindgen]
@@ -101,7 +103,17 @@ impl PixelContributionMaps {
     /// Returns an empty PixelContributionMaps object.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self { inner: Vec::new() }
+        Self {
+            inner: RefCell::new(Vec::new()),
+        }
+    }
+
+    /// Creates a shallow copy of this PixelContributionMaps object.
+    pub fn create_shallow_copy(&self) -> PixelContributionMaps {
+        let inner = self.inner.borrow().clone();
+        Self {
+            inner: RefCell::new(inner),
+        }
     }
 
     /// Creates a new PixelContributionMaps object by loading the data from the given URL.
@@ -146,22 +158,24 @@ impl PixelContributionMaps {
             })
             .collect();
 
-        Ok(PixelContributionMaps { inner })
+        Ok(PixelContributionMaps {
+            inner: RefCell::new(inner),
+        })
     }
 
     /// Returns the number of PixelContributionMap objects in this PixelContributionMaps object.
     pub fn size(&self) -> usize {
-        self.inner.len()
+        self.inner.borrow().len()
     }
 
     /// Returns the PixelContributionMap object at the given index.
     pub fn get_map(&self, index: usize) -> PixelContributionMap {
-        self.inner[index].clone()
+        self.inner.borrow()[index].clone()
     }
 
     /// Returns the descriptor for the pixel contribution map at the given index.
     pub fn get_map_descriptor(&self, index: usize) -> PixelContribColorMapDescriptor {
-        self.inner[index].inner.descriptor.into()
+        self.inner.borrow()[index].inner.descriptor.into()
     }
 
     /// Returns the pixel contribution value at the given index and position.
@@ -171,8 +185,8 @@ impl PixelContributionMaps {
     /// * `pos_x` - The x position of the pixel contribution value.
     /// * `pos_y` - The y position of the pixel contribution value.
     pub fn get_value(&self, index: usize, pos_x: usize, pos_y: usize) -> f32 {
-        self.inner[index].inner.pixel_contrib
-            [pos_y * self.inner[index].inner.descriptor.size() + pos_x]
+        let size = self.get_map_descriptor(index).map_size;
+        self.inner.borrow()[index].inner.pixel_contrib[pos_y * size + pos_x]
     }
 
     /// Returns the pixel contribution values at the given position for all pixel contribution
@@ -182,9 +196,10 @@ impl PixelContributionMaps {
     /// * `pos_x` - The x position of the pixel contribution values.
     /// * `pos_y` - The y position of the pixel contribution values.
     pub fn get_values_at_pos(&self, pos_x: usize, pos_y: usize) -> Float32Array {
-        let result = Float32Array::new_with_length(self.inner.len() as u32);
+        let inner = self.inner.borrow();
+        let result = Float32Array::new_with_length(inner.len() as u32);
 
-        self.inner.iter().enumerate().for_each(|(i, map)| {
+        inner.iter().enumerate().for_each(|(i, map)| {
             let size = map.inner.descriptor.size();
             let pos_index = pos_y * size + pos_x;
 
@@ -201,7 +216,7 @@ impl PixelContributionMaps {
     /// # Arguments
     /// * `map` - The PixelContributionMap object to add.
     pub fn add_map(&mut self, map: PixelContributionMap) {
-        self.inner.push(map);
+        self.inner.borrow_mut().push(map);
     }
 }
 

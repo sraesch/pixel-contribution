@@ -56,8 +56,6 @@ export function PixelContribView(props: PixelContribViewProps): JSX.Element {
         // const image_data = ctx.createImageData(map_size, map_size);
         const image_data = pixelContrib.draw_image(scale);
 
-        console.log(image_data);
-
         ctx.putImageData(image_data, 0, 0);
 
     }, [pixelContrib, scale]);

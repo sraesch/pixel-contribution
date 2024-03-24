@@ -8,6 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 math = { path = "../math" }
+nalgebra-glm = "0.18"
 pixel-contrib-types = { path = "../pixel-contrib-types" }
 colorgrad = "0.6"
 cfg-if = "1.0.0"
