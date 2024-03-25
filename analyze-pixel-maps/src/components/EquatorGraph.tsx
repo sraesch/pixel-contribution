@@ -121,6 +121,8 @@ export function EquatorGraph(props: EquatorGraphProps): JSX.Element {
         }
     );
 
+    const [currentIndex, setCurrentIndex] = useState(0);
+
     useEffect(() => {
         const labels = createLabels(ANGLES);
 
@@ -128,12 +130,8 @@ export function EquatorGraph(props: EquatorGraphProps): JSX.Element {
         if (contrib_maps.size() >= 3) {
             // take first map, the middle map, and the last map
             datasets = [
-                createDataSeries(contrib_maps.get_map(0), ANGLES),
-                createDataSeries(contrib_maps.get_map(Math.floor(contrib_maps.size() / 2)), ANGLES),
-                createDataSeries(contrib_maps.get_map(contrib_maps.size() - 1), ANGLES),
-                createDataSeriesLinearInterpolation(contrib_maps.get_map(0), ANGLES),
-                createDataSeriesLinearInterpolation(contrib_maps.get_map(Math.floor(contrib_maps.size() / 2)), ANGLES),
-                createDataSeriesLinearInterpolation(contrib_maps.get_map(contrib_maps.size() - 1), ANGLES),
+                createDataSeries(contrib_maps.get_map(currentIndex), ANGLES),
+                createDataSeriesLinearInterpolation(contrib_maps.get_map(currentIndex), ANGLES),
             ];
         } else {
             datasets = [...Array(contrib_maps.size()).keys()].map(i => createDataSeries(contrib_maps.get_map(i), ANGLES));
@@ -144,7 +142,26 @@ export function EquatorGraph(props: EquatorGraphProps): JSX.Element {
             datasets,
         });
 
-    }, [contrib_maps]);
+    }, [contrib_maps, currentIndex]);
 
-    return <Line options={options} data={dataSeries} />;
+    const handleChangeIndex = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        setCurrentIndex(parseInt(event.target.value));
+    }
+
+    return (<div style={{ display: 'flex', flexDirection: 'column', marginTop: '32px', maxWidth: '1024px' }}>
+        <div style={{ display: 'flex', flexDirection: 'row' }}>
+            Camera Angle:
+            <select style={{ maxWidth: '100px', marginLeft: '8px' }} value={currentIndex} onChange={handleChangeIndex}>
+                {[...Array(contrib_maps.size()).keys()].map(i => {
+                    const angle = contrib_maps.get_map(i).get_description().camera_angle;
+
+                    return (<option key={i} value={i}>
+                        {Math.round(angle * 180 / Math.PI)} degree
+                    </option>);
+                })}
+            </select>
+        </div>
+        <Line options={options} data={dataSeries} />
+    </div>
+    );
 }
