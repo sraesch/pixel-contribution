@@ -1,5 +1,6 @@
 # Pixel Contribution
 Small research project for determining the pixel contribution of a geometry from all views.
+The accumulated results sketched as a paper can be found here [Paper](./doc/paper.md).
 
 ## Getting Started
 
