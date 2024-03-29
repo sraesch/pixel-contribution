@@ -3,14 +3,16 @@ extern crate wasm_bindgen;
 
 use std::{cell::RefCell, rc::Rc};
 
-pub use equator_graph::*;
 pub use angle_interpolate::*;
+pub use equator_graph::*;
 pub use math;
 use nalgebra_glm::Vec3;
+pub use sphere_interpolate::*;
 pub use utils::*;
 
-mod equator_graph;
 mod angle_interpolate;
+mod equator_graph;
+mod sphere_interpolate;
 mod utils;
 
 use math::clamp;
