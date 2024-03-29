@@ -4,13 +4,13 @@ import { determine_interpolation_error } from "../interpolation_error";
 import { PixelContribViews } from "./PixelContribViews";
 import { PixelContributionMaps } from "rs-analyze-pixel-maps";
 
-export interface AngleInterpolationErrorViewsProps {
+export interface InterpolationErrorViewsProps {
     contrib_maps: PixelContributionMaps;
     interpolator: PixelContribInterpolator;
     onSelectError?: (error: number) => void;
 }
 
-export function AngleInterpolationErrorViews(props: AngleInterpolationErrorViewsProps): JSX.Element {
+export function InterpolationErrorViews(props: InterpolationErrorViewsProps): JSX.Element {
     const { contrib_maps, interpolator } = props;
 
     const [errorMaps, setErrorMaps] = useState<PixelContributionMaps>(new PixelContributionMaps());
