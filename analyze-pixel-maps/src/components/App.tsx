@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PixelContribViews } from "./PixelContribViews";
 import { InterpolateAngleGraph } from "./InterpolateAngleGraph";
-import { PixelContribErrorViews } from "./PixelContribErrorViews";
+import { AngleInterpolationErrorViews } from "./AngleInterpolationErrorViews";
 import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
 import { PixelContributionMaps } from 'rs-analyze-pixel-maps';
 import { SphereView } from "./SphereView";
@@ -71,9 +71,9 @@ function App(): JSX.Element {
       </div>
       <div>
         <h2>Interpolated Contribution Error</h2>
-        <PixelContribErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
-        <PixelContribErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
-        <PixelContribErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
+        <AngleInterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
+        <AngleInterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
+        <AngleInterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
       </div>
 
       <h2 style={{ marginTop: '2em' }}>Spherical view on the contribution</h2>
