@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 
-use crate::PixelContributionMap;
+use crate::{PixelContribColorMapDescriptor, PixelContributionMap};
 
 /// A very simple interpolator, where only one value per axis is being stored.
 #[wasm_bindgen]
@@ -8,6 +8,8 @@ pub struct ValuePerAxisInterpolator {
     x_axis: f32,
     y_axis: f32,
     z_axis: f32,
+
+    desc: PixelContribColorMapDescriptor,
 }
 
 #[wasm_bindgen]
@@ -40,6 +42,7 @@ impl ValuePerAxisInterpolator {
             x_axis,
             y_axis,
             z_axis,
+            desc,
         }
     }
 
@@ -55,5 +58,10 @@ impl ValuePerAxisInterpolator {
         let dir_z = dir_z.abs();
 
         self.x_axis * dir_x + self.y_axis * dir_y + self.z_axis * dir_z
+    }
+
+    /// Returns the descriptor for the input map.
+    pub fn get_descriptor(&self) -> PixelContribColorMapDescriptor {
+        self.desc
     }
 }

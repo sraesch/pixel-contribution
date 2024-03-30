@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { PixelContribViews } from "./PixelContribViews";
 import { InterpolateAngleGraph } from "./InterpolateAngleGraph";
 import { InterpolationErrorViews } from "./InterpolationErrorViews";
-import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
+import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, PixelContribValuePerAxisInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
 import { PixelContributionMaps } from 'rs-analyze-pixel-maps';
 import { SphereView } from "./SphereView";
 import { EquatorGraph } from "./EquatorGraph";
@@ -70,7 +70,7 @@ function App(): JSX.Element {
         <InterpolateAngleGraph contrib_maps={pixelContrib} pos={contribPos} />
       </div>
       <div>
-        <h2>Interpolated Contribution Error</h2>
+        <h2>Interpolated Angle Contribution Error</h2>
         <InterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new LinearPixelContribInterpolator(pixelContrib)} />
         <InterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new AnglePixelContribInterpolator(pixelContrib)} />
         <InterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new QuadraticPixelContribInterpolator(pixelContrib)} />
@@ -79,6 +79,10 @@ function App(): JSX.Element {
       <h2 style={{ marginTop: '2em' }}>Spherical view on the contribution</h2>
       <SphereView contrib_maps={pixelContrib} canvas_size={512} />
       <EquatorGraph contrib_maps={pixelContrib} />
+      <div>
+        <h2>Interpolated Sphere Contribution Error</h2>
+        <InterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new PixelContribValuePerAxisInterpolator(pixelContrib)} />
+      </div>
     </main>
   )
 }

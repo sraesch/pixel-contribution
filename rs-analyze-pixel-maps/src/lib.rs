@@ -244,6 +244,29 @@ impl PixelContribColorMapDescriptor {
         pixel_contrib_types::PixelContribColorMapDescriptor::new(self.map_size, self.camera_angle)
             .index_from_camera_dir(Vec3::new(dir_x, dir_y, dir_z))
     }
+
+    /// Returns the camera direction vector for the given index.
+    ///
+    /// # Arguments
+    /// * `index` - The index of the value to lookup.
+    pub fn camera_dir_from_index(&self, index: usize) -> Float32Array {
+        let d = pixel_contrib_types::PixelContribColorMapDescriptor::new(
+            self.map_size,
+            self.camera_angle,
+        )
+        .camera_dir_from_index(index);
+
+        Float32Array::from(d.as_slice())
+    }
+
+    /// Returns the index for the given x and y position.
+    ///
+    /// # Arguments
+    /// * `x` - The x position on the map.
+    /// * `y` - The y position on the map.
+    pub fn get_index(&self, x: usize, y: usize) -> usize {
+        y * self.map_size + x
+    }
 }
 
 impl From<pixel_contrib_types::PixelContribColorMapDescriptor> for PixelContribColorMapDescriptor {

@@ -1,4 +1,7 @@
-import { LinearAngle, PixelContributionMaps, QuadraticAngle, TangentAngle } from "rs-analyze-pixel-maps";
+import {
+    LinearAngle, PixelContributionMaps, QuadraticAngle, TangentAngle,
+    ValuePerAxisInterpolator
+} from "rs-analyze-pixel-maps";
 
 /**
  * An interpolator for pixel contributions. For a given angle and position on the pixel contribution
@@ -84,5 +87,45 @@ export class QuadraticPixelContribInterpolator implements PixelContribInterpolat
 
     public interpolate(angle: number, pos: [number, number]): number {
         return this.interpolator.interpolate(angle, pos[0], pos[1]);
+    }
+}
+
+/**
+ * A very simple interpolator, where only one value per axis is being stored.
+ */
+export class PixelContribValuePerAxisInterpolator implements PixelContribInterpolator {
+    /**
+     * An interpolator for each pixel contribution map, where the key is the angle.
+     */
+    private interpolator: Map<number, ValuePerAxisInterpolator>;
+
+    public readonly name = "ValuePerAxis";
+
+    /**
+     * @param contrib_maps - The pixel contribution maps from which to define the interpolation.
+     */
+    constructor(contrib_maps: PixelContributionMaps) {
+        this.interpolator = new Map();
+
+        [...Array(contrib_maps.size()).keys()].map(i => {
+            const map = contrib_maps.get_map(i);
+            const angle = map.get_description().camera_angle;
+
+            this.interpolator.set(angle, new ValuePerAxisInterpolator(map));
+        });
+    }
+
+    public interpolate(angle: number, pos: [number, number]): number {
+        // try to find the interpolator for the given angle
+        const op = this.interpolator.get(angle);
+        if (!op) {
+            return 0;
+        }
+
+        const desc = op.get_descriptor();
+        const index = desc.get_index(pos[0], pos[1]);
+        const dir = desc.camera_dir_from_index(index);
+
+        return op.interpolate(dir[0], dir[1], dir[2]);
     }
 }
