@@ -4,6 +4,7 @@ extern crate wasm_bindgen;
 use std::{cell::RefCell, rc::Rc};
 
 pub use angle_interpolate::*;
+use colorgrad::Gradient;
 pub use equator_graph::*;
 pub use math;
 use nalgebra_glm::Vec3;
@@ -27,6 +28,14 @@ use web_sys::{ImageData, Request, RequestInit, RequestMode, Response};
 #[derive(Clone)]
 pub struct PixelContributionMap {
     inner: Rc<pixel_contrib_types::PixelContributionMap>,
+}
+
+#[wasm_bindgen]
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ColorMapType {
+    Turbo,
+    Gray,
 }
 
 #[wasm_bindgen]
@@ -70,11 +79,14 @@ impl PixelContributionMap {
     ///
     /// # Arguments
     /// * `scale` - The scale to apply to the pixel contribution values.
-    pub fn draw_image(&self, scale: f32) -> ImageData {
+    /// * `colormap` - The colormap to use for the image.
+    pub fn draw_image(&self, scale: f32, colormap: ColorMapType) -> ImageData {
         let values = self.inner.pixel_contrib.as_slice();
 
-        let g = colorgrad::turbo();
-        let (min_val, max_val) = g.domain();
+        let g: Box<dyn ColorMap> = match colormap {
+            ColorMapType::Turbo => Box::new(colorgrad::turbo()),
+            ColorMapType::Gray => Box::new(InvertedGradient::new(colorgrad::greys())),
+        };
 
         let size = self.inner.descriptor.size() as u32;
 
@@ -84,9 +96,7 @@ impl PixelContributionMap {
         data.chunks_exact_mut(4)
             .zip(values.iter())
             .for_each(|(out, value)| {
-                let value = clamp(value * scale, 0f32, 1f32) as f64;
-                let value: f64 = (1f64 - value) * min_val + value * max_val;
-                let color = g.at(value).to_rgba8();
+                let color = g.at((value * scale) as f64);
 
                 out[0] = color[0];
                 out[1] = color[1];
@@ -275,5 +285,52 @@ impl From<pixel_contrib_types::PixelContribColorMapDescriptor> for PixelContribC
             map_size: descriptor.size(),
             camera_angle: descriptor.camera_angle(),
         }
+    }
+}
+
+trait ColorMap {
+    fn at(&self, value: f64) -> [u8; 3];
+}
+
+impl ColorMap for Gradient {
+    fn at(&self, value: f64) -> [u8; 3] {
+        let (min, max) = self.domain();
+        let value = clamp((1f64 - value) * min + value * max, min, max);
+
+        let color = self.at(value).to_rgba8();
+
+        [color[0], color[1], color[2]]
+    }
+}
+
+struct InvertedGradient {
+    gradient: Gradient,
+    dmin: f64,
+    dmax: f64,
+}
+
+impl InvertedGradient {
+    fn new(gradient: Gradient) -> Self {
+        let (dmin, dmax) = gradient.domain();
+
+        Self {
+            gradient,
+            dmin,
+            dmax,
+        }
+    }
+}
+
+impl ColorMap for InvertedGradient {
+    fn at(&self, value: f64) -> [u8; 3] {
+        let value = clamp(
+            (1f64 - value) * self.dmax + value * self.dmin,
+            self.dmin,
+            self.dmax,
+        );
+
+        let color = self.gradient.at(value).to_rgba8();
+
+        [color[0], color[1], color[2]]
     }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { PixelContributionMap } from "rs-analyze-pixel-maps";
+import { ColorMapType, PixelContributionMap } from "rs-analyze-pixel-maps";
 
 /**
  * Callback for when a pixel is selected in the PixelContribView.
@@ -10,10 +10,11 @@ export interface PixelContribViewProps {
     pixelContrib: PixelContributionMap;
     onSelectPixelContribSample?: OnSelectPixelContribSample;
     scale?: number;
+    colormap: ColorMapType;
 }
 
 export function PixelContribView(props: PixelContribViewProps): JSX.Element {
-    const { pixelContrib, onSelectPixelContribSample } = props;
+    const { pixelContrib, onSelectPixelContribSample, colormap } = props;
 
     const scale = props.scale || 1.0;
 
@@ -53,12 +54,11 @@ export function PixelContribView(props: PixelContribViewProps): JSX.Element {
             return;
         }
 
-        // const image_data = ctx.createImageData(map_size, map_size);
-        const image_data = pixelContrib.draw_image(scale);
+        const image_data = pixelContrib.draw_image(scale, colormap);
 
         ctx.putImageData(image_data, 0, 0);
 
-    }, [pixelContrib, scale]);
+    }, [pixelContrib, scale, colormap]);
 
     return (
         <canvas ref={canvasRef}
