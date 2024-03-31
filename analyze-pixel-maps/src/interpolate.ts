@@ -1,4 +1,5 @@
 import {
+    BarycentricInterpolator,
     LinearAngle, PixelContributionMaps, QuadraticAngle, TangentAngle,
     ValuePerAxisInterpolator
 } from "rs-analyze-pixel-maps";
@@ -112,6 +113,46 @@ export class PixelContribValuePerAxisInterpolator implements PixelContribInterpo
             const angle = map.get_description().camera_angle;
 
             this.interpolator.set(angle, new ValuePerAxisInterpolator(map));
+        });
+    }
+
+    public interpolate(angle: number, pos: [number, number]): number {
+        // try to find the interpolator for the given angle
+        const op = this.interpolator.get(angle);
+        if (!op) {
+            return 0;
+        }
+
+        const desc = op.get_descriptor();
+        const index = desc.get_index(pos[0], pos[1]);
+        const dir = desc.camera_dir_from_index(index);
+
+        return op.interpolate(dir[0], dir[1], dir[2]);
+    }
+}
+
+/**
+ * A very simple interpolator, where only one value per axis is being stored.
+ */
+export class PixelContribBarycentricInterpolator implements PixelContribInterpolator {
+    /**
+     * An interpolator for each pixel contribution map, where the key is the angle.
+     */
+    private interpolator: Map<number, BarycentricInterpolator>;
+
+    public readonly name = "Barycentric";
+
+    /**
+     * @param contrib_maps - The pixel contribution maps from which to define the interpolation.
+     */
+    constructor(contrib_maps: PixelContributionMaps) {
+        this.interpolator = new Map();
+
+        [...Array(contrib_maps.size()).keys()].map(i => {
+            const map = contrib_maps.get_map(i);
+            const angle = map.get_description().camera_angle;
+
+            this.interpolator.set(angle, new BarycentricInterpolator(map));
         });
     }
 
