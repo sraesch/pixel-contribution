@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { PixelContribViews } from "./PixelContribViews";
 import { InterpolateAngleGraph } from "./InterpolateAngleGraph";
 import { InterpolationErrorViews } from "./InterpolationErrorViews";
-import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, PixelContribBarycentricInterpolator, PixelContribValuePerAxisInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
+import { AnglePixelContribInterpolator, LinearPixelContribInterpolator, PixelContribBarycentricInterpolator, PixelContribBarycentricInterpolatorFine, PixelContribValuePerAxisInterpolator, QuadraticPixelContribInterpolator } from "../interpolate";
 import { PixelContributionMaps } from 'rs-analyze-pixel-maps';
 import { SphereView } from "./SphereView";
 import { EquatorGraph } from "./EquatorGraph";
@@ -83,6 +83,7 @@ function App(): JSX.Element {
         <h2>Interpolated Sphere Contribution Error</h2>
         <InterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new PixelContribValuePerAxisInterpolator(pixelContrib)} />
         <InterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new PixelContribBarycentricInterpolator(pixelContrib)} />
+        <InterpolationErrorViews onSelectError={handleSelectError} contrib_maps={pixelContrib} interpolator={new PixelContribBarycentricInterpolatorFine(pixelContrib)} />
       </div>
     </main>
   )
