@@ -8,11 +8,13 @@ use colorgrad::Gradient;
 pub use equator_graph::*;
 pub use math;
 use nalgebra_glm::Vec3;
+pub use polar_coodinates::*;
 pub use sphere_interpolate::*;
 pub use utils::*;
 
 mod angle_interpolate;
 mod equator_graph;
+mod polar_coodinates;
 mod sphere_interpolate;
 mod utils;
 
