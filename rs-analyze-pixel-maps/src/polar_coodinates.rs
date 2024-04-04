@@ -18,6 +18,9 @@ pub fn polar_to_cartesian(alpha: f32, beta: f32) -> Vec3 {
 }
 
 /// Convert 3D cartesian coordinates to polar coordinates on the unit sphere.
+/// Returns a tuple with the angles $\alpha$ and $\beta$ in radians, where $\alpha$ is the angle in
+/// the x-y plane from the x-axis and $\beta$ is the angle from the z-axis where $\beta = 0$ is
+/// along the equator.
 ///
 /// # Arguments
 /// * `p` - the 3D cartesian coordinates.
