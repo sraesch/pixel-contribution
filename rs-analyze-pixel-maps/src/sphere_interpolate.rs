@@ -347,20 +347,8 @@ impl BarycentricInterpolatorFine {
 /// on the grid cells using bi-linear interpolation.
 #[wasm_bindgen]
 pub struct GridInterpolator {
-    /// The value at position (0, 0, 1) of the unit sphere.
-    top_value: f32,
-
-    /// The value at position (0, 0, -1) of the unit sphere.
-    bottom_value: f32,
-
-    /// The eight values at the equator of the unit sphere.
-    equator_values: [f32; 8],
-
-    /// The six values at the ring located at the top hemisphere of the unit sphere.
-    top_hemisphere_values: [f32; 6],
-
-    /// six values at the ring located at the bottom hemisphere of the unit sphere.
-    bottom_hemisphere_values: [f32; 6],
+    /// The non-uniform grid on the sphere sampled from the input map.
+    non_uniform_grid: NonUniformSphereGrid,
 
     /// The descriptor of the input map.
     desc: PixelContribColorMapDescriptor,
@@ -374,36 +362,13 @@ impl GridInterpolator {
     /// `contrib_map` - The PixelContributionMap object to create the interpolator from.
     #[wasm_bindgen(constructor)]
     pub fn new(contrib_map: &PixelContributionMap) -> Self {
-        const FRAC_PI_4: f32 = std::f32::consts::FRAC_PI_4;
-
-        let desc = contrib_map.get_description();
-
-        // The two values at the poles of the octahedron.
-        let top_value =
-            contrib_map.get_value_at_index(desc.index_from_camera_dir(0f32, 0f32, 1f32));
-        let bottom_value =
-            contrib_map.get_value_at_index(desc.index_from_camera_dir(0f32, 0f32, -1f32));
-
-        // Sample the top hemisphere of the unit sphere.
-        let mut top_hemisphere_values: [f32; 6] = Default::default();
-        Self::sample_unit_sphere(FRAC_PI_4, contrib_map, &mut top_hemisphere_values);
-
-        // The four values along the equator of the octahedron.
-        let mut equator_values: [f32; 8] = Default::default();
-        Self::sample_unit_sphere(0f32, contrib_map, &mut equator_values);
-
-        // The four values at the bottom hemisphere of the octahedron.
-        // Note that the directional vectors will be normalized.
-        let mut bottom_hemisphere_values: [f32; 6] = Default::default();
-        Self::sample_unit_sphere(-FRAC_PI_4, contrib_map, &mut bottom_hemisphere_values);
+        let num_row_values = [1, 6, 8, 6, 1];
+        // let num_row_values = [1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1];
+        let non_uniform_grid = NonUniformSphereGrid::new(&num_row_values, contrib_map);
 
         Self {
-            top_value,
-            top_hemisphere_values,
-            equator_values,
-            bottom_hemisphere_values,
-            bottom_value,
-            desc,
+            non_uniform_grid,
+            desc: contrib_map.get_description(),
         }
     }
 
@@ -414,48 +379,38 @@ impl GridInterpolator {
     /// `dir_y` - The y component of the camera direction vector.
     /// `dir_z` - The z component of the camera direction vector.
     pub fn interpolate(&self, dir_x: f32, dir_y: f32, dir_z: f32) -> f32 {
-        const FRAC_PI_4: f32 = std::f32::consts::FRAC_PI_4;
+        const FRAC_PI_2: f32 = std::f32::consts::FRAC_PI_2;
 
         // normalizes the given direction vector and converts it to polar coordinates
         let dir = Vec3::new(dir_x, dir_y, dir_z).normalize();
         let (alpha, beta) = cartesian_to_polar(&dir);
 
-        if beta >= 0f32 {
-            let i = (beta / FRAC_PI_4).floor();
+        // map the beta angle from the range [-PI/2, PI/2] to the range [0, PI]
+        let beta = clamp(beta + FRAC_PI_2, 0f32, std::f32::consts::PI);
 
-            let (v0, v1) = match i as usize {
-                0 => (
-                    Self::linear_interpolate_on_unit_circle(&self.equator_values, alpha),
-                    Self::linear_interpolate_on_unit_circle(&self.top_hemisphere_values, alpha),
-                ),
-                1 => (
-                    Self::linear_interpolate_on_unit_circle(&self.top_hemisphere_values, alpha),
-                    self.top_value,
-                ),
-                _ => (self.top_value, self.top_value),
-            };
+        // determine the row index of the grid based on the beta angle
+        let dx = std::f32::consts::PI / (self.non_uniform_grid.get_num_rows() - 1) as f32;
+        let row_index = clamp(
+            (beta / dx).floor() as usize,
+            0,
+            self.non_uniform_grid.get_num_rows() - 1,
+        );
 
-            let t = (beta - i * FRAC_PI_4) / FRAC_PI_4;
+        // determine the values of the row 0
+        let row_values = self.non_uniform_grid.get_row_values(row_index);
+        let row0 = Self::linear_interpolate_on_unit_circle(row_values, alpha);
 
-            v0 * (1f32 - t) + v1 * t
+        // check if there is a row 1
+        if row_index + 1 < self.non_uniform_grid.get_num_rows() {
+            // determine the values of the row 1
+            let row_values = self.non_uniform_grid.get_row_values(row_index + 1);
+            let row1 = Self::linear_interpolate_on_unit_circle(row_values, alpha);
+
+            // interpolate between the two rows
+            let t = (beta - row_index as f32 * dx) / dx;
+            row0 * (1f32 - t) + row1 * t
         } else {
-            let i = (beta / FRAC_PI_4).ceil().abs();
-
-            let (v0, v1) = match i as usize {
-                0 => (
-                    Self::linear_interpolate_on_unit_circle(&self.equator_values, alpha),
-                    Self::linear_interpolate_on_unit_circle(&self.bottom_hemisphere_values, alpha),
-                ),
-                1 => (
-                    Self::linear_interpolate_on_unit_circle(&self.bottom_hemisphere_values, alpha),
-                    self.bottom_value,
-                ),
-                _ => (self.bottom_value, self.bottom_value),
-            };
-
-            let t = (beta + i * FRAC_PI_4).abs() / FRAC_PI_4;
-
-            v0 * (1f32 - t) + v1 * t
+            row0
         }
     }
 
@@ -499,6 +454,78 @@ impl GridInterpolator {
         a * (1f32 - t) + b * t
     }
 
+    /// Returns the descriptor for the input map.
+    pub fn get_descriptor(&self) -> PixelContribColorMapDescriptor {
+        self.desc
+    }
+}
+
+/// A non-uniform grid, i.e., a grid over the sphere where the number of values per circle vary
+/// from row to row.
+struct NonUniformSphereGrid {
+    /// The values of the grid. The row-pointers are used to determine the start of each row.
+    values: Vec<f32>,
+
+    /// The row pointers are the indices of the first value of each row.
+    row_pointers: Vec<usize>,
+}
+
+impl NonUniformSphereGrid {
+    /// Creates a new NonUniformSphereGrid with the given number of values per row.
+    ///
+    /// # Arguments
+    /// `num_values_per_row` - The number of values per row.
+    /// `contrib_map` - The PixelContributionMap object to sample the unit sphere from.
+    pub fn new(num_values_per_row: &[usize], contrib_map: &PixelContributionMap) -> Self {
+        let num_rows = num_values_per_row.len();
+
+        // create the row pointers, i.e., the indices of the first value of each row
+        let mut row_pointers = Vec::with_capacity(num_rows + 1);
+        row_pointers.push(0);
+
+        let mut sum = 0;
+        num_values_per_row.iter().for_each(|&num_values| {
+            sum += num_values;
+            row_pointers.push(sum);
+        });
+
+        // sample values for the row pointer
+        let mut values: Vec<f32> = vec![0f32; sum];
+        let dx = std::f32::consts::PI / (num_rows - 1) as f32;
+        for r in 0..num_rows {
+            // map r to the angle beta which is in the range [-PI/2, PI/2]
+            let beta = (r as f32) * dx - std::f32::consts::FRAC_PI_2;
+
+            assert!((-std::f32::consts::FRAC_PI_2..=std::f32::consts::FRAC_PI_2).contains(&beta));
+
+            // sample the unit sphere at the given beta angle
+            let row_values = &mut values[row_pointers[r]..row_pointers[r + 1]];
+            Self::sample_unit_sphere(beta, contrib_map, row_values);
+        }
+
+        Self {
+            values,
+            row_pointers,
+        }
+    }
+
+    /// Returns the number of rows of the grid.
+    #[inline]
+    pub fn get_num_rows(&self) -> usize {
+        self.row_pointers.len() - 1
+    }
+
+    /// Returns the values for the given row index.
+    ///
+    /// # Arguments
+    /// `row_index` - The index of the row to get the values for.
+    #[inline]
+    pub fn get_row_values(&self, row_index: usize) -> &[f32] {
+        assert!(row_index + 1 < self.row_pointers.len());
+
+        &self.values[self.row_pointers[row_index]..self.row_pointers[row_index + 1]]
+    }
+
     /// Samples the circle on the unit sphere defined at the given beta angle.
     ///
     /// # Arguments
@@ -516,11 +543,6 @@ impl GridInterpolator {
             *value =
                 contrib_map.get_value_at_index(desc.index_from_camera_dir(dir[0], dir[1], dir[2]));
         });
-    }
-
-    /// Returns the descriptor for the input map.
-    pub fn get_descriptor(&self) -> PixelContribColorMapDescriptor {
-        self.desc
     }
 }
 

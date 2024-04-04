@@ -235,7 +235,7 @@ export class PixelContribPolarInterpolator implements PixelContribInterpolator {
             const map = contrib_maps.get_map(i);
             const angle = map.get_description().camera_angle;
 
-            this.interpolator.set(angle, new BarycentricInterpolatorFine(map));
+            this.interpolator.set(angle, new GridInterpolator(map));
         });
     }
 
