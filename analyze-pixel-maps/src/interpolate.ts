@@ -235,7 +235,68 @@ export class PixelContribPolarInterpolator implements PixelContribInterpolator {
             const map = contrib_maps.get_map(i);
             const angle = map.get_description().camera_angle;
 
-            this.interpolator.set(angle, new GridInterpolator(map));
+            const grid_interpolator = new GridInterpolator(map, 0.6);
+            this.interpolator.set(angle, grid_interpolator);
+
+            const num_rows = grid_interpolator.get_num_rows();
+            const rows = [];
+
+            for (let i = 0; i < num_rows; i++) {
+                rows.push(grid_interpolator.get_num_values_for_row(i));
+            }
+
+            console.log(`Grid Interpolator rows: ${rows}, total: ${rows.reduce((a, b) => a + b, 0)}`);
+        });
+    }
+
+    public interpolate(angle: number, pos: [number, number]): number {
+        // try to find the interpolator for the given angle
+        const op = this.interpolator.get(angle);
+        if (!op) {
+            return 0;
+        }
+
+        const desc = op.get_descriptor();
+        const index = desc.get_index(pos[0], pos[1]);
+        const dir = desc.camera_dir_from_index(index);
+
+        return op.interpolate(dir[0], dir[1], dir[2]);
+    }
+}
+
+
+/**
+ * An interpolator, where the pixel contributions are interpolated using polar coordinates.
+ */
+export class PixelContribPolarInterpolator2 implements PixelContribInterpolator {
+    /**
+     * An interpolator for each pixel contribution map, where the key is the angle.
+     */
+    private interpolator: Map<number, GridInterpolator>;
+
+    public readonly name = "Polar2";
+
+    /**
+     * @param contrib_maps - The pixel contribution maps from which to define the interpolation.
+     */
+    constructor(contrib_maps: PixelContributionMaps) {
+        this.interpolator = new Map();
+
+        [...Array(contrib_maps.size()).keys()].map(i => {
+            const map = contrib_maps.get_map(i);
+            const angle = map.get_description().camera_angle;
+
+            const grid_interpolator = GridInterpolator.new(map);
+            this.interpolator.set(angle, grid_interpolator);
+
+            const num_rows = grid_interpolator.get_num_rows();
+            const rows = [];
+
+            for (let i = 0; i < num_rows; i++) {
+                rows.push(grid_interpolator.get_num_values_for_row(i));
+            }
+
+            console.log(`Grid Interpolator rows: ${rows}, total: ${rows.reduce((a, b) => a + b, 0)}`);
         });
     }
 

@@ -1,3 +1,5 @@
+use std::f32::consts::FRAC_PI_2;
+
 use math::clamp;
 use nalgebra_glm::Vec3;
 use wasm_bindgen::prelude::*;
@@ -360,10 +362,39 @@ impl GridInterpolator {
     ///
     /// # Arguments
     /// `contrib_map` - The PixelContributionMap object to create the interpolator from.
+    /// `dx` - The maximal step size in the grid on the unit sphere.
     #[wasm_bindgen(constructor)]
+    pub fn new_from_dx(contrib_map: &PixelContributionMap, dx: f32) -> Self {
+        const PI: f32 = std::f32::consts::PI;
+        const PI_2: f32 = 2f32 * 2f32;
+
+        let num_rows = ((PI / dx).round() as usize).max(2);
+        let num_row_values: Vec<usize> = Vec::from_iter((0..num_rows).map(|row_index| {
+            let beta = (row_index as f32) / (num_rows as f32 - 1f32) * PI - FRAC_PI_2;
+            debug_assert!((-FRAC_PI_2..=FRAC_PI_2).contains(&beta), "beta: {}", beta);
+
+            let radius = PI_2 * beta.cos();
+            if radius < 1e-5 {
+                1
+            } else {
+                ((radius / dx).round() as usize).max(1)
+            }
+        }));
+
+        let non_uniform_grid = NonUniformSphereGrid::new(&num_row_values, contrib_map);
+
+        Self {
+            non_uniform_grid,
+            desc: contrib_map.get_description(),
+        }
+    }
+
+    /// Creates a new GridInterpolator with the given values for the x, y and z axis.
+    ///
+    /// # Arguments
+    /// `contrib_map` - The PixelContributionMap object to create the interpolator from.
     pub fn new(contrib_map: &PixelContributionMap) -> Self {
         let num_row_values = [1, 6, 8, 6, 1];
-        // let num_row_values = [1, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 1];
         let non_uniform_grid = NonUniformSphereGrid::new(&num_row_values, contrib_map);
 
         Self {
@@ -458,6 +489,19 @@ impl GridInterpolator {
     pub fn get_descriptor(&self) -> PixelContribColorMapDescriptor {
         self.desc
     }
+
+    /// Returns the number of rows of the grid.
+    pub fn get_num_rows(&self) -> usize {
+        self.non_uniform_grid.get_num_rows()
+    }
+
+    /// Returns the number of values for the given row index.
+    ///
+    /// # Arguments
+    /// `row_index` - The index of the row to get the number of values for.
+    pub fn get_num_values_for_row(&self, row_index: usize) -> usize {
+        self.non_uniform_grid.get_row_values(row_index).len()
+    }
 }
 
 /// A non-uniform grid, i.e., a grid over the sphere where the number of values per circle vary
@@ -529,6 +573,7 @@ impl NonUniformSphereGrid {
     /// Samples the circle on the unit sphere defined at the given beta angle.
     ///
     /// # Arguments
+    ///
     /// `beta` - The angle beta to sample the unit sphere at.
     /// `contrib_map` - The PixelContributionMap object to sample the unit sphere from.
     /// `result` - The array to store the sampled values in.
