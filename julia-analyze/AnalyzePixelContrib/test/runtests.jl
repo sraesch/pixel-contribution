@@ -1,8 +1,7 @@
-using AnalyzePixelContrib: encode_octahedron_normal, decode_octahedron_normal
+using AnalyzePixelContrib: encode_octahedron_normal, decode_octahedron_normal, camera_dir_from_index, index_from_camera_dir
 using Test
 using LinearAlgebra: dot
 
-println("Run octahedron tests...")
 @testset "octahedron_encoding" begin
     local num = 20
     local pi = Float32(π)
@@ -40,6 +39,23 @@ println("Run octahedron tests...")
             local angle_error = abs(1 - dot(nrm, nrm2))
 
             @assert angle_error <= 1e-6 "Decoding error is too high"
+        end
+    end
+end
+
+@testset "test_camera_dir_index_mapping" begin
+    local map_sizes::Vector{UInt32} = [16, 32, 64, 128, 256, 512, 1024]
+
+    for map_size in map_sizes
+        for u in 1:map_size
+            for v in 1:map_size
+                local uv::Vector{UInt32} = [u, v]
+
+                local dir = camera_dir_from_index(uv, map_size)
+                local uv2 = index_from_camera_dir(dir, map_size)
+
+                @assert uv == uv2 "Index and UV coordinates do not match, expected $(uv) but got $(uv2)"
+            end
         end
     end
 end

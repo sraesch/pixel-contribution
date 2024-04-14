@@ -59,4 +59,55 @@ function load_pixel_contrib(filename::String)::ContribMaps
     return ContribMaps(maps)
 end
 
-export load_pixel_contrib, ContribMaps, ContribMap
+""""
+Determines the two dimensional index in the contribution map based on the provided camera direction.
+
+### Input
+
+- `dir` -- The camera direction vector, i.e., the direction from the camera to the center of the
+           bounding box.
+- `map_size` -- The size of the contribution map, i.e., the number of pixels in one dimension.
+
+### Output
+
+The two dimensional index in the contribution map.
+
+"""
+function index_from_camera_dir(dir::Vector{Float64}, map_size::UInt32)::Vector{UInt32}
+    if length(dir) != 3
+        throw(ArgumentError("The input direction must have 3 components"))
+    end
+
+    if map_size <= 0
+        throw(ArgumentError("The map size must be greater than 0"))
+    end
+
+    local uv = encode_octahedron_normal(dir) * Float64(map_size) - [0.5, 0.5]
+
+    local u = clamp(round(UInt32, uv[1]), 0, map_size - 1)
+    local v = clamp(round(UInt32, uv[2]), 0, map_size - 1)
+
+    return [u + 1, v + 1]
+end
+
+function camera_dir_from_index(in_uv::Vector{UInt32}, map_size::UInt32)::Vector{Float64}
+    if length(in_uv) != 2
+        throw(ArgumentError("The input UV coordinates must have 2 components"))
+    end
+
+    if map_size <= 0
+        throw(ArgumentError("The map size must be greater than 0"))
+    end
+
+    if in_uv[1] < 1 || in_uv[1] > map_size || in_uv[2] < 1 || in_uv[2] > map_size
+        throw(ArgumentError("The UV coordinates must be in the range [1, map_size]"))
+    end
+
+    local uv = ([Float64(in_uv[1]), Float64(in_uv[2])] - [0.5, 0.5]) / Float64(map_size)
+    @assert 0.0 <= uv[1] <= 1.0
+    @assert 0.0 <= uv[2] <= 1.0
+
+    return decode_octahedron_normal(uv)
+end
+
+export load_pixel_contrib, ContribMaps, ContribMap, index_from_camera_dir, camera_dir_from_index
