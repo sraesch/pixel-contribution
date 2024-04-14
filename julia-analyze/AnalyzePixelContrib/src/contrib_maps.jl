@@ -90,6 +90,19 @@ function index_from_camera_dir(dir::Vector{Float64}, map_size::UInt32)::Vector{U
     return [u + 1, v + 1]
 end
 
+"""
+Determines the camera direction based on the provided two dimensional index in the contribution map.
+
+### Input
+
+- `in_uv` -- The two dimensional index in the contribution map.
+- `map_size` -- The size of the contribution map, i.e., the number of pixels in one dimension.
+
+### Output
+
+The camera direction vector.
+
+"""
 function camera_dir_from_index(in_uv::Vector{UInt32}, map_size::UInt32)::Vector{Float64}
     if length(in_uv) != 2
         throw(ArgumentError("The input UV coordinates must have 2 components"))
