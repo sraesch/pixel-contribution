@@ -89,3 +89,5 @@ function decode_octahedron_normal(in_octahedron::Vector{Float64})::Vector{Float6
 
     return normalize([x, y, z])
 end
+
+export encode_octahedron_normal, decode_octahedron_normal

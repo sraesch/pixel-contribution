@@ -7,7 +7,9 @@ Pkg.add("PlotlyJS")
 
 plotlyjs()
 
-include("AnalyzePixelContrib/src/AnalyzePixelContrib.jl")
+Pkg.develop(path="./AnalyzePixelContrib")
+
+using AnalyzePixelContrib
 
 
 """
