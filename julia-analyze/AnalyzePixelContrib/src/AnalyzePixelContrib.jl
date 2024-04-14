@@ -1,11 +1,6 @@
-#!/usr/bin/env julia
-using Plots
+module AnalyzePixelContrib
 
-# Install plotlyjs
-import Pkg;
-Pkg.add("PlotlyJS");
-
-plotlyjs()
+include("octahedron.jl")
 
 """
 Loads the pixel contribution data from the specified file.
@@ -45,36 +40,16 @@ function load_pixel_contrib(filename::String)::Vector{Tuple{Float32,Array{Float3
     return maps
 end
 
-function visualize_heatmap(map::Array{Float32,2})
-    heatmap(map, aspect_ratio=1, c=:viridis)
-end
+# function index_from_camera_dir(dir_x::Float32, dir_y::Float32, dir_z::Float32)::UInt32
 
-function visualize_3d(map::Array{Float32,2})
-    surface(map, c=:viridis)
-end
 
-# function main()
-#     # Parse the input arguments, i.e., the file name of the pixel contribution data.
-#     # Return an error if the number of arguments is not 1 and print the usage.
-#     if length(ARGS) != 1
-#         println("Usage: analyze.jl <filename>")
-#         return
-#     end
 
-#     filename = ARGS[1]
+#     let uv = encode_octahedron_normal(dir) * self.map_size as f32 - Vec2::new(0.5, 0.5);
 
-#     println("Loading pixel contribution data from $filename")
-#     maps = load_pixel_contrib(filename)
-#     num_maps = length(maps)
-#     println("Loaded $num_maps maps")
+#         let u = clamp(uv.x.round() as usize, 0, self.map_size - 1);
+#         let v = clamp(uv.y.round() as usize, 0, self.map_size - 1);
 
-#     println("Visualizing the first map")
-
-#     plotlyjs()
-#     p = visualize_heatmap(maps[1][2])
-
-#     gui(p)
-
+#         v * self.map_size + u
 # end
 
-# main()
+end
